@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+    html { color-scheme: dark; }
     body { @apply bg-ink-950 text-ink-200; }
     ::selection { @apply bg-gold/30 text-white; }
+    [x-cloak] { display: none !important; }
 }
 
 @layer components {
@@ -16,6 +18,56 @@
     }
     .glow-gold { box-shadow: 0 0 0 1px rgba(245, 185, 66, .25), 0 10px 40px -10px rgba(245, 185, 66, .35); }
     .text-gradient-gold { @apply bg-gradient-to-r from-gold-400 via-gold to-gold-600 bg-clip-text text-transparent; }
+
+    /* Buttons */
+    .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 disabled:cursor-not-allowed disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-gold text-ink-950 shadow-lg shadow-gold/10 hover:bg-gold-400 focus-visible:ring-gold/60; }
+    .btn-secondary { @apply border border-ink-700 bg-ink-800 text-ink-200 hover:border-ink-600 hover:text-white focus-visible:ring-ink-600; }
+    .btn-success { @apply bg-bull/15 text-bull-400 ring-1 ring-inset ring-bull/30 hover:bg-bull/25 focus-visible:ring-bull; }
+    .btn-danger { @apply bg-bear/15 text-bear-400 ring-1 ring-inset ring-bear/30 hover:bg-bear/25 focus-visible:ring-bear; }
+
+    /* Surfaces */
+    .card { @apply rounded-2xl border border-ink-700 bg-ink-900; }
+    .card-header { @apply flex flex-wrap items-center justify-between gap-3 border-b border-ink-700 px-5 py-4; }
+    .card-title { @apply font-display text-base font-semibold text-white; }
+    .card-body { @apply p-5; }
+
+    /* Form fields (inputs use <x-text-input>) */
+    .field-select, .field-textarea { @apply block w-full rounded-lg border-ink-700 bg-ink-800 px-3.5 py-2.5 text-sm text-white shadow-sm focus:border-gold focus:ring-gold/40; }
+    .field-help { @apply mt-1.5 text-xs text-ink-400; }
+
+    /* Tables */
+    .table-wrap { @apply overflow-x-auto; }
+    .table { @apply w-full text-left text-sm; }
+    .table thead th { @apply whitespace-nowrap border-b border-ink-700 px-5 py-3 text-xs font-medium uppercase tracking-wide text-ink-400; }
+    .table tbody td { @apply whitespace-nowrap border-b border-ink-700/60 px-5 py-3.5 align-middle; }
+    .table tbody tr:last-child td { @apply border-b-0; }
+    .table tbody tr { @apply transition hover:bg-ink-800/40; }
+
+    /* Badges */
+    .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset; }
+    .badge-green { @apply bg-bull/10 text-bull-400 ring-bull/25; }
+    .badge-red { @apply bg-bear/10 text-bear-400 ring-bear/25; }
+    .badge-gold { @apply bg-gold/10 text-gold ring-gold/25; }
+    .badge-gray { @apply bg-ink-700/50 text-ink-200 ring-ink-600; }
+    .badge-blue { @apply bg-sky-500/10 text-sky-300 ring-sky-500/25; }
+
+    .money { @apply font-mono tabular-nums; }
+
+    /* Genealogy org-chart (top-down) */
+    .tree ul { @apply relative flex justify-center pt-6; }
+    .tree > ul { @apply pt-0; }
+    .tree li { @apply relative flex flex-col items-center px-2 pt-6; list-style: none; }
+    .tree li::before, .tree li::after { content: ''; @apply absolute top-0 h-6 w-1/2 border-t border-ink-600; right: 50%; }
+    .tree li::after { @apply border-l border-ink-600; right: auto; left: 50%; }
+    .tree li:only-child::before, .tree li:only-child::after { display: none; }
+    .tree li:only-child { @apply pt-0; }
+    .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+    .tree li:last-child::before { @apply rounded-tr-lg border-r border-ink-600; }
+    .tree li:first-child::after { @apply rounded-tl-lg; }
+    .tree ul ul::before { content: ''; @apply absolute left-1/2 top-0 h-6 border-l border-ink-600; }
+    .link { @apply font-medium text-gold hover:text-gold-400; }
 }
 
 @media (prefers-reduced-motion: reduce) {

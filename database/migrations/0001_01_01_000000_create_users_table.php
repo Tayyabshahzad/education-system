@@ -20,15 +20,17 @@ return new class extends Migration
             $table->string('country', 80)->nullable();
             $table->string('referral_code', 20)->unique();
             $table->foreignId('sponsor_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('package', 20);                         // key from config/education.php
-            $table->decimal('package_amount', 10, 2);              // amount chosen at registration
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->decimal('joining_amount', 10, 2)->default(0);  // amount chosen at registration
             $table->decimal('paid_amount', 10, 2)->default(0);     // total approved payments
+            $table->decimal('wallet_balance', 12, 2)->default(0);  // withdrawable earnings
+            $table->timestamp('commission_released_at')->nullable(); // set once uplines were paid for this member
             $table->enum('status', ['pending', 'active', 'blocked'])->default('pending');
-            $table->boolean('is_admin')->default(false);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

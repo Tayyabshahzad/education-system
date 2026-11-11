@@ -1,7 +1,7 @@
 <x-guest-layout title="Create account" width="max-w-xl">
     <div class="mb-7">
         <h2 class="font-display text-3xl font-semibold text-white">Start your trading journey</h2>
-        <p class="mt-2 text-sm text-ink-400">Choose your package and create your account. You will upload your payment proof after registration.</p>
+        <p class="mt-2 text-sm text-ink-400">Choose your amount and create your account. You will submit your payment proof after registration.</p>
     </div>
 
     <form method="POST" action="{{ route('register') }}" class="space-y-6">
@@ -28,31 +28,40 @@
         @endif
 
         {{-- Step 1: package --}}
-        <fieldset>
+        <fieldset x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }} }">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">1</span>
-                Choose your package
+                Choose your amount
             </legend>
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach ($packages as $key => $pkg)
-                    <label class="group relative cursor-pointer">
-                        <input type="radio" name="package" value="{{ $key }}" class="peer sr-only" @checked(old('package', 'full') === $key) required>
-                        <div class="h-full rounded-xl border border-ink-700 bg-ink-800/60 p-4 transition group-hover:border-ink-600 peer-checked:border-gold peer-checked:bg-gold/5 peer-checked:glow-gold peer-focus-visible:ring-2 peer-focus-visible:ring-gold/50">
-                            <div class="flex items-start justify-between">
-                                <span class="text-sm font-medium text-ink-200">{{ $pkg['label'] }}</span>
-                                @if ($key === 'full')
-                                    <span class="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">Recommended</span>
-                                @endif
-                            </div>
-                            <div class="mt-2 font-display text-3xl font-semibold text-white">${{ number_format($pkg['amount']) }}</div>
-                            <p class="mt-1 text-xs text-ink-400">
-                                {{ $key === 'full' ? 'Complete training access. Activates referral earnings for your sponsor.' : 'Entry access. Upgrade to the full package anytime from your dashboard.' }}
-                            </p>
+                @foreach ([[$minFee, 'Joining Fee', 'Entry access. Top up to the full package anytime from your dashboard.'], [$fullFee, 'Full Training Package', 'Live class batches and full academy access.']] as [$value, $label, $text])
+                    <button type="button" @click="amount = {{ $value }}"
+                            class="h-full rounded-xl border p-4 text-left transition"
+                            :class="Number(amount) === {{ $value }} ? 'border-gold bg-gold/5 glow-gold' : 'border-ink-700 bg-ink-800/60 hover:border-ink-600'">
+                        <div class="flex items-start justify-between">
+                            <span class="text-sm font-medium text-ink-200">{{ $label }}</span>
+                            @if ($value == $fullFee)
+                                <span class="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">Recommended</span>
+                            @endif
                         </div>
-                    </label>
+                        <div class="mt-2 font-display text-3xl font-semibold text-white">${{ number_format($value) }}</div>
+                        <p class="mt-1 text-xs text-ink-400">{{ $text }}</p>
+                    </button>
                 @endforeach
             </div>
-            <x-input-error :messages="$errors->get('package')" />
+            @if ($maxFee != $minFee)
+                <div class="mt-3 flex items-center gap-3">
+                    <label for="joining_amount" class="shrink-0 text-xs text-ink-400">Or enter an amount</label>
+                    <div class="relative flex-1">
+                        <span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-ink-400">$</span>
+                        <x-text-input id="joining_amount" name="joining_amount" type="number" step="0.01" min="{{ $minFee }}" max="{{ $maxFee }}" x-model="amount" class="money pl-7" required />
+                    </div>
+                </div>
+            @else
+                <input type="hidden" name="joining_amount" :value="amount">
+            @endif
+            <p class="field-help">Between ${{ number_format($minFee, 2) }} and ${{ number_format($maxFee, 2) }}.</p>
+            <x-input-error :messages="$errors->get('joining_amount')" />
         </fieldset>
 
         {{-- Step 2: details --}}

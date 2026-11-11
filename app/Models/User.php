@@ -2,18 +2,34 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
+    public const ROLE_SUPER_ADMIN = 'super-admin';
+
+    public const ROLE_STAFF = 'staff';
+
+    public const ROLE_TEACHER = 'teacher';
+
+    public const ROLE_MEMBER = 'member';
+
+    // paid_amount, wallet_balance, status and commission_released_at are deliberately
+    // NOT fillable: they only change through PaymentService / WalletService / admin actions.
     protected $fillable = [
         'name',
         'username',
@@ -21,8 +37,8 @@ class User extends Authenticatable
         'phone',
         'country',
         'sponsor_id',
-        'package',
-        'package_amount',
+        'created_by',
+        'joining_amount',
         'password',
     ];
 
@@ -35,10 +51,11 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'commission_released_at' => 'datetime',
             'password' => 'hashed',
-            'package_amount' => 'decimal:2',
+            'joining_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
-            'is_admin' => 'boolean',
+            'wallet_balance' => 'decimal:2',
         ];
     }
 
@@ -53,10 +70,12 @@ class User extends Authenticatable
     {
         do {
             $code = 'GVE'.strtoupper(Str::random(6));
-        } while (static::where('referral_code', $code)->exists());
+        } while (static::withTrashed()->where('referral_code', $code)->exists());
 
         return $code;
     }
+
+    /* ---------- Relations ---------- */
 
     public function sponsor(): BelongsTo
     {
@@ -68,14 +87,137 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'sponsor_id');
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function withdrawals(): HasMany
+    {
+        return $this->hasMany(Withdrawal::class);
+    }
+
+    /** Batches this member is enrolled in. */
+    public function batches(): BelongsToMany
+    {
+        return $this->belongsToMany(Batch::class)->withPivot('assigned_by')->withTimestamps();
+    }
+
+    /** Batches this teacher teaches. */
+    public function teachingBatches(): HasMany
+    {
+        return $this->hasMany(Batch::class, 'teacher_id');
+    }
+
+    /* ---------- Scopes ---------- */
+
+    public function scopeMembers(Builder $query): Builder
+    {
+        return $query->role(self::ROLE_MEMBER);
+    }
+
+    public function scopeFullyPaid(Builder $query): Builder
+    {
+        return $query->where('paid_amount', '>=', Setting::money('full_fee'));
+    }
+
+    /* ---------- Helpers ---------- */
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(self::ROLE_SUPER_ADMIN);
+    }
+
+    public function isMember(): bool
+    {
+        return $this->hasRole(self::ROLE_MEMBER);
+    }
+
+    public function isStaffSide(): bool
+    {
+        return $this->hasAnyRole([self::ROLE_SUPER_ADMIN, self::ROLE_STAFF]);
+    }
+
+    public function isBlocked(): bool
+    {
+        return $this->status === 'blocked';
+    }
+
+    public function isFullyPaid(): bool
+    {
+        return (float) $this->paid_amount >= Setting::money('full_fee');
+    }
+
     public function referralLink(): string
     {
         return route('register', ['ref' => $this->referral_code]);
     }
 
-    /** Uplines become eligible for commission only once this member has paid the qualifying amount. */
-    public function qualifiesForCommission(): bool
+    /** Amount still payable before hitting the maximum fee, minus anything awaiting review. */
+    public function payableRemaining(): float
     {
-        return (float) $this->paid_amount >= (float) config('education.commission_qualifying_amount');
+        $pending = (float) $this->payments()->where('status', 'pending')->sum('amount');
+
+        return max(0, round(Setting::money('max_fee') - (float) $this->paid_amount - $pending, 2));
+    }
+
+    /** First payment must cover the joining fee; later top-ups can be any amount. */
+    public function minimumNextPayment(): float
+    {
+        $hasPaidOrPending = (float) $this->paid_amount > 0
+            || $this->payments()->where('status', 'pending')->exists();
+
+        return $hasPaidOrPending ? 1.0 : Setting::money('min_join_fee');
+    }
+
+    /**
+     * Downline grouped by level: [1 => Collection, 2 => Collection, ...].
+     *
+     * @return array<int, Collection<int, User>>
+     */
+    public function downlineByLevel(int $depth = 3): array
+    {
+        $levels = [];
+        $parentIds = [$this->id];
+
+        for ($level = 1; $level <= $depth; $level++) {
+            $members = $parentIds
+                ? static::whereIn('sponsor_id', $parentIds)->with('sponsor:id,username')->orderBy('id')->get()
+                : collect();
+            $levels[$level] = $members;
+            $parentIds = $members->pluck('id')->all();
+        }
+
+        return $levels;
+    }
+
+    /** True when $other sits anywhere below this user. */
+    public function hasInDownline(User $other): bool
+    {
+        $parentIds = [$this->id];
+        while ($parentIds) {
+            $children = static::whereIn('sponsor_id', $parentIds)->pluck('id')->all();
+            if (in_array($other->id, $children, true)) {
+                return true;
+            }
+            $parentIds = $children;
+        }
+
+        return false;
+    }
+
+    public function initials(): string
+    {
+        return Str::upper(Str::substr($this->name, 0, 1));
+    }
+
+    public function primaryRole(): string
+    {
+        return $this->getRoleNames()->first() ?? self::ROLE_MEMBER;
     }
 }

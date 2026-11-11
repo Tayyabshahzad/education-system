@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
@@ -25,14 +26,30 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'username' => fake()->unique()->userName(),
-            'package' => 'full',
-            'package_amount' => 200,
+            'username' => str_replace('.', '_', fake()->unique()->userName()),
+            'phone' => fake()->numerify('+92300#######'),
+            'country' => 'Pakistan',
+            'joining_amount' => 200,
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /** A member account. */
+    public function member(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->assignRole(User::ROLE_MEMBER));
+    }
+
+    /** An active staff-side account (super-admin, staff or teacher). */
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(function (User $user) use ($role) {
+            $user->forceFill(['status' => 'active'])->save();
+            $user->assignRole($role);
+        });
     }
 
     /**
