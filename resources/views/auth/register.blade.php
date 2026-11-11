@@ -22,7 +22,7 @@
         @else
             <div>
                 <x-input-label for="sponsor_code" value="Referral code (optional)" />
-                <x-text-input id="sponsor_code" name="sponsor_code" :value="$refCode" class="font-mono uppercase" placeholder="e.g. GVEAB12CD" />
+                <x-text-input id="sponsor_code" name="sponsor_code" :value="$refCode" class="font-mono uppercase placeholder:normal-case" placeholder="e.g. GVEAB12CD" />
                 <x-input-error :messages="$errors->get('sponsor_code')" />
             </div>
         @endif

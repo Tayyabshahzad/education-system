@@ -16,7 +16,7 @@
 <body class="h-full font-sans antialiased">
 @php
     // Deterministic decorative candlestick series for the brand panel.
-    mt_srand(11);
+    mt_srand(4);
     $candles = [];
     $price = 160;
     for ($i = 0; $i < 34; $i++) {
