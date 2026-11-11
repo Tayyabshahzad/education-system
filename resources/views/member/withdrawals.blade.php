@@ -9,15 +9,33 @@
             @else
                 <div class="table-wrap">
                     <table class="table">
-                        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Note</th></tr></thead>
+                        <thead><tr><th>Date</th><th>Amount</th><th>Sent to</th><th>Status</th><th>Payment receipt</th></tr></thead>
                         <tbody>
                             @foreach ($withdrawals as $w)
                                 <tr>
                                     <td class="text-ink-400">{{ $w->created_at->format('d M Y, H:i') }}</td>
                                     <td class="money text-ink-100">${{ number_format((float) $w->amount, 2) }}</td>
-                                    <td>{{ $w->method }}</td>
-                                    <td><x-status-badge :status="$w->status" /></td>
-                                    <td class="max-w-xs truncate text-ink-400">{{ $w->note ?: '—' }}</td>
+                                    <td>
+                                        <div>{{ $w->method }}</div>
+                                        <div class="font-mono text-xs text-ink-400">{{ $w->account_number }}</div>
+                                    </td>
+                                    <td>
+                                        <x-status-badge :status="$w->status" />
+                                        @if ($w->note)<div class="mt-1 max-w-[14rem] truncate text-xs text-ink-400" title="{{ $w->note }}">{{ $w->note }}</div>@endif
+                                    </td>
+                                    <td>
+                                        @if ($w->payout_proof_path)
+                                            <a href="{{ route('withdrawals.receipt', $w) }}" target="_blank" class="flex items-center gap-2" title="Open receipt">
+                                                <img src="{{ route('withdrawals.receipt', $w) }}" alt="Receipt" loading="lazy" class="h-10 w-10 rounded-md object-cover object-top ring-1 ring-ink-700">
+                                                <span class="link text-xs">View receipt</span>
+                                            </a>
+                                            @if ($w->payout_reference)<div class="mt-1 font-mono text-xs text-ink-400">{{ $w->payout_reference }}</div>@endif
+                                        @elseif ($w->status === 'pending')
+                                            <span class="text-xs text-ink-400">Awaiting payment</span>
+                                        @else
+                                            <span class="text-xs text-ink-400">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -59,11 +59,13 @@
                 @if ($w->status === 'pending')
                     @can('withdrawals.review')
                         <div class="grid gap-4 border-t border-ink-700 p-5 sm:grid-cols-2" x-data="{ mode: null }">
-                            <form method="POST" action="{{ route('admin.withdrawals.approve', $w) }}" class="space-y-2 rounded-xl border border-bull/30 bg-bull/5 p-4">
+                            <form method="POST" action="{{ route('admin.withdrawals.approve', $w) }}" enctype="multipart/form-data" class="space-y-3 rounded-xl border border-bull/30 bg-bull/5 p-4">
                                 @csrf
                                 <div class="text-sm font-semibold text-bull-400">Mark as paid</div>
-                                <p class="text-xs text-ink-400">Send ${{ number_format((float) $w->amount, 2) }} to the account above first, then confirm.</p>
-                                <x-text-input name="note" placeholder="Transaction ref (optional)" />
+                                <p class="text-xs text-ink-400">1. Send <span class="money text-ink-100">${{ number_format((float) $w->amount, 2) }}</span> to the account above.<br>2. Attach the bank receipt / screenshot of that transfer.</p>
+                                <x-proof-upload label="Transfer receipt (required)" />
+                                <x-text-input name="reference" :value="old('reference')" placeholder="Transaction ID (optional)" />
+                                <x-text-input name="note" :value="old('note')" placeholder="Note for member (optional)" />
                                 <button class="btn btn-success w-full">Approve & mark paid</button>
                             </form>
                             <form method="POST" action="{{ route('admin.withdrawals.reject', $w) }}" class="space-y-2 rounded-xl border border-bear/30 bg-bear/5 p-4">
@@ -76,10 +78,18 @@
                         </div>
                     @endcan
                 @else
-                    <div class="border-t border-ink-700 px-5 py-4 text-sm text-ink-400">
-                        {{ ucfirst($w->status) }} by <span class="text-ink-100">{{ $w->reviewer?->name ?? '—' }}</span>
-                        on {{ $w->reviewed_at?->format('d M Y, h:i A') }}.
-                        @if ($w->note) Note: <span class="text-ink-100">{{ $w->note }}</span>@endif
+                    <div class="flex flex-wrap items-start gap-5 border-t border-ink-700 px-5 py-4 text-sm text-ink-400">
+                        @if ($w->payout_proof_path)
+                            <a href="{{ route('withdrawals.receipt', $w) }}" target="_blank" class="group block shrink-0" title="Open full size">
+                                <img src="{{ route('withdrawals.receipt', $w) }}" alt="Transfer receipt" class="h-28 w-24 rounded-lg object-cover object-top ring-1 ring-ink-700 transition group-hover:ring-gold">
+                            </a>
+                        @endif
+                        <div class="space-y-1">
+                            <div>{{ ucfirst($w->status) }} by <span class="text-ink-100">{{ $w->reviewer?->name ?? '—' }}</span> on {{ $w->reviewed_at?->format('d M Y, h:i A') }}.</div>
+                            @if ($w->payout_reference)<div>Transaction ID: <span class="font-mono text-ink-100">{{ $w->payout_reference }}</span></div>@endif
+                            @if ($w->note)<div>Note: <span class="text-ink-100">{{ $w->note }}</span></div>@endif
+                            @if ($w->payout_proof_path)<a href="{{ route('withdrawals.receipt', $w) }}" target="_blank" class="link text-xs">View transfer receipt</a>@endif
+                        </div>
                     </div>
                 @endif
             </div>

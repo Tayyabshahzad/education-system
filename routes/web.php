@@ -23,6 +23,8 @@ Route::middleware('auth')->group(function () {
 
     // Payment proof files (owner or payment staff; checked in the controller).
     Route::get('/payments/{payment}/proof', [Member\PaymentController::class, 'proof'])->name('payments.proof');
+    // Admin's transfer receipt for a withdrawal (requesting member or withdrawal staff; checked in the controller).
+    Route::get('/withdrawals/{withdrawal}/receipt', [Admin\WithdrawalController::class, 'receipt'])->name('withdrawals.receipt');
 
     /* ---------------- Member area ---------------- */
     Route::middleware('role:'.User::ROLE_MEMBER)->group(function () {

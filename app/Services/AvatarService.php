@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\UploadReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Support\UploadReader;
 
 /** Profile pictures: centre-cropped to a square and stored as a small WebP (~10–25 KB). */
 class AvatarService

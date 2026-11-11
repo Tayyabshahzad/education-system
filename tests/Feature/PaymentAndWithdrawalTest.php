@@ -134,16 +134,50 @@ class PaymentAndWithdrawalTest extends TestCase
         $this->assertSame('rejected', Withdrawal::sole()->status);
     }
 
-    public function test_approved_withdrawal_keeps_funds_deducted(): void
+    public function test_approving_a_withdrawal_requires_the_admins_transfer_receipt(): void
     {
         $member = $this->member();
         $member->forceFill(['status' => 'active', 'wallet_balance' => 30])->save();
         $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 30, 'method' => 'Bank Transfer', 'account_title' => 'Me', 'account_number' => 'PK36MEZN0001']);
+        $withdrawal = Withdrawal::sole();
+        $admin = $this->superAdmin();
 
-        $this->actingAs($this->superAdmin())->post(route('admin.withdrawals.approve', Withdrawal::sole()), ['note' => 'REF9']);
+        // No receipt -> not approved.
+        $this->actingAs($admin)->post(route('admin.withdrawals.approve', $withdrawal), ['reference' => 'REF9'])
+            ->assertSessionHasErrors('proof');
+        $this->assertSame('pending', $withdrawal->fresh()->status);
 
-        $this->assertSame('approved', Withdrawal::sole()->status);
+        // With receipt -> approved, receipt stored compressed, funds stay deducted.
+        $this->actingAs($admin)->post(route('admin.withdrawals.approve', $withdrawal), [
+            'proof' => UploadedFile::fake()->image('bank-receipt.png', 1080, 2340),
+            'reference' => 'REF9',
+            'note' => 'Sent via Meezan',
+        ])->assertSessionHasNoErrors();
+
+        $withdrawal->refresh();
+        $this->assertSame('approved', $withdrawal->status);
+        $this->assertSame('REF9', $withdrawal->payout_reference);
+        $this->assertStringStartsWith('payout-proofs/', $withdrawal->payout_proof_path);
+        Storage::assertExists($withdrawal->payout_proof_path);
         $this->assertEquals(0, $member->fresh()->wallet_balance);
+
+        // The member sees the receipt; other members cannot; withdrawal staff can.
+        $this->actingAs($member)->get(route('withdrawals.index'))->assertSee('View receipt')->assertSee('REF9');
+        $this->actingAs($member)->get(route('withdrawals.receipt', $withdrawal))->assertOk();
+        $this->actingAs($this->member())->get(route('withdrawals.receipt', $withdrawal))->assertForbidden();
+        $this->actingAs($this->staff(['withdrawals.view']))->get(route('withdrawals.receipt', $withdrawal))->assertOk();
+    }
+
+    public function test_staff_without_review_permission_cannot_approve(): void
+    {
+        $member = $this->member();
+        $member->forceFill(['wallet_balance' => 30])->save();
+        $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 30, 'method' => 'Easypaisa', 'account_title' => 'Me', 'account_number' => '03001112223']);
+
+        $this->actingAs($this->staff(['withdrawals.view']))
+            ->post(route('admin.withdrawals.approve', Withdrawal::sole()), ['proof' => UploadedFile::fake()->image('r.png')])
+            ->assertForbidden();
+        $this->assertSame('pending', Withdrawal::sole()->status);
     }
 
     public function test_withdrawal_below_minimum_is_rejected(): void

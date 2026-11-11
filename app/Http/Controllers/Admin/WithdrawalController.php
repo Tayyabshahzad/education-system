@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ProofRules;
 use App\Models\Withdrawal;
 use App\Services\WithdrawalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class WithdrawalController extends Controller
 {
@@ -49,9 +52,27 @@ class WithdrawalController extends Controller
 
     public function approve(Request $request, Withdrawal $withdrawal, WithdrawalService $withdrawals): RedirectResponse
     {
-        $withdrawals->approve($withdrawal, $request->user(), $request->input('note'));
+        $data = $request->validate([
+            ...ProofRules::required(),
+            'note' => ['nullable', 'string', 'max:255'],
+        ], [
+            ...ProofRules::messages(),
+            'proof.required' => 'Attach the bank receipt / screenshot of the transfer you made to the member.',
+        ]);
 
-        return back()->with('success', 'Withdrawal marked as paid.');
+        $withdrawals->approve($withdrawal, $request->user(), $request->file('proof'), $data['reference'] ?? null, $data['note'] ?? null);
+
+        return back()->with('success', 'Withdrawal marked as paid. The member can now see your transfer receipt.');
+    }
+
+    /** Admin's transfer receipt: visible to the member who requested it and to withdrawal staff. */
+    public function receipt(Request $request, Withdrawal $withdrawal): StreamedResponse
+    {
+        $user = $request->user();
+        abort_unless($withdrawal->user_id === $user->id || $user->can('withdrawals.view'), 403);
+        abort_unless($withdrawal->payout_proof_path && Storage::exists($withdrawal->payout_proof_path), 404);
+
+        return Storage::response($withdrawal->payout_proof_path);
     }
 
     public function reject(Request $request, Withdrawal $withdrawal, WithdrawalService $withdrawals): RedirectResponse

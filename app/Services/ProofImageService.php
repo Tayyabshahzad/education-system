@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Support\UploadReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Support\UploadReader;
 
 /**
  * Stores payment screenshots as small, text-readable images to keep server storage low.
@@ -34,7 +34,8 @@ class ProofImageService
 
     public const DIRECTORY = 'payment-proofs';
 
-    public function store(UploadedFile $file): string
+    /** @param  string  $directory  payment-proofs (member fees) or payout-proofs (admin withdrawal receipts) */
+    public function store(UploadedFile $file, string $directory = self::DIRECTORY): string
     {
         $source = UploadReader::image($file, 'proof');
 
@@ -42,7 +43,7 @@ class ProofImageService
         $bytes = $this->compress($source, $useWebp);
         imagedestroy($source);
 
-        $path = self::DIRECTORY.'/'.now()->format('Y/m').'/'.Str::random(32).($useWebp ? '.webp' : '.jpg');
+        $path = $directory.'/'.now()->format('Y/m').'/'.Str::random(32).($useWebp ? '.webp' : '.jpg');
         Storage::put($path, $bytes);
 
         return $path;
