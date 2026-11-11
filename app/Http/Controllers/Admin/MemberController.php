@@ -82,7 +82,7 @@ class MemberController extends Controller
             ...MemberDetailsRules::messages(),
         ]);
 
-        $member->fill(collect($validated)->only(['name', 'username', 'email', 'phone', 'country'])->all());
+        $member->fill(collect($validated)->only(['name', 'email', 'phone', 'cnic', 'country'])->all());
         if (! empty($validated['password'])) {
             $member->password = $validated['password'];
         }

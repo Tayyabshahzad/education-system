@@ -17,10 +17,6 @@
                     <x-text-input id="name" name="name" :value="old('name', $user->name)" required />
                 </div>
                 <div>
-                    <x-input-label for="username" value="Username" />
-                    <x-text-input id="username" name="username" :value="old('username', $user->username)" required />
-                </div>
-                <div>
                     <x-input-label for="email" value="Email (login)" />
                     <x-text-input id="email" type="email" name="email" :value="old('email', $user->email)" required />
                 </div>

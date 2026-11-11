@@ -61,7 +61,6 @@ class UserController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'min:4', 'max:30', 'alpha_dash', Rule::unique('users')],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users')],
             'phone' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', Rule::unique('users')],
             'password' => ['required', 'confirmed', Password::defaults()],

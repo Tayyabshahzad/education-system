@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
+use App\Support\UploadReader;
 
 /** Profile pictures: centre-cropped to a square and stored as a small WebP (~10–25 KB). */
 class AvatarService
@@ -17,10 +17,7 @@ class AvatarService
 
     public function update(User $user, UploadedFile $file): void
     {
-        $source = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
-        if ($source === false) {
-            throw ValidationException::withMessages(['avatar' => 'This image could not be read. Please upload a JPG, PNG or WEBP photo.']);
-        }
+        $source = UploadReader::image($file, 'avatar');
 
         $width = imagesx($source);
         $height = imagesy($source);

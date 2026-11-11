@@ -9,7 +9,8 @@ use Illuminate\Validation\Rules\Password;
 
 /**
  * Shared validation for every form that creates or edits a member account.
- * Username, email, CNIC and mobile number must each be unique across all accounts.
+ * Email, CNIC and mobile number must each be unique across all accounts.
+ * Username and referral code are never entered; the system generates both (see User::booted).
  */
 class MemberDetailsRules
 {
@@ -17,7 +18,6 @@ class MemberDetailsRules
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'min:4', 'max:30', 'alpha_dash', Rule::unique('users')->ignore($ignore)],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users')->ignore($ignore)],
             // CNIC & phone arrive already normalised by the NormalizeIdentityFields middleware.
             'cnic' => ['required', 'regex:/^\d{5}-\d{7}-\d$/', Rule::unique('users')->ignore($ignore)],
@@ -37,7 +37,6 @@ class MemberDetailsRules
             'phone.regex' => 'Please enter a valid mobile number, e.g. 0300 1234567.',
             'phone.unique' => 'An account with this mobile number already exists.',
             'email.unique' => 'An account with this email already exists.',
-            'username.unique' => 'This username is already taken.',
         ];
     }
 }

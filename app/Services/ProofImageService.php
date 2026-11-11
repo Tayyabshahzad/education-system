@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
+use App\Support\UploadReader;
 
 /**
  * Stores payment screenshots as small, text-readable images to keep server storage low.
@@ -36,10 +36,7 @@ class ProofImageService
 
     public function store(UploadedFile $file): string
     {
-        $source = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
-        if ($source === false) {
-            throw ValidationException::withMessages(['proof' => 'The screenshot could not be read. Please upload a JPG, PNG or WEBP image.']);
-        }
+        $source = UploadReader::image($file, 'proof');
 
         $useWebp = function_exists('imagewebp');
         $bytes = $this->compress($source, $useWebp);

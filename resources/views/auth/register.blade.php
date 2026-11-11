@@ -4,29 +4,34 @@
         <p class="mt-2 text-sm text-ink-400">Choose your amount, fill in your details and attach your payment screenshot.</p>
     </div>
 
+    {{-- Registration is by invitation only: the sponsor comes from the referral link, never typed in. --}}
+    @unless ($sponsor)
+        <div class="card p-6 text-center">
+            <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold"><x-icon name="link" class="h-6 w-6" /></span>
+            <h3 class="mt-4 font-display text-lg font-semibold text-ink-100">You need an invitation link</h3>
+            <p class="mt-2 text-sm text-ink-400">
+                @if ($refCode)
+                    This referral link is not valid. Please ask the person who invited you to send their link again.
+                @else
+                    Every member joins under a sponsor. Ask the person who invited you for their referral link and open it to register.
+                @endif
+            </p>
+            <x-input-error :messages="$errors->get('sponsor_code')" class="mt-3" />
+        </div>
+    @else
     <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
-        {{-- Referral --}}
-        @if ($sponsor)
-            <div class="flex items-center gap-3 rounded-xl border border-bull/30 bg-bull/10 px-4 py-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bull/20 font-semibold text-bull-400">
-                    {{ strtoupper(substr($sponsor->name, 0, 1)) }}
-                </div>
-                <div class="text-sm">
-                    <div class="text-ink-400">Referred by</div>
-                    <div class="font-medium text-ink-100">{{ $sponsor->name }} <span class="font-mono text-xs text-ink-400">({{ $sponsor->referral_code }})</span></div>
-                </div>
+        {{-- Sponsor from the referral link --}}
+        <div class="flex items-center gap-3 rounded-xl border border-bull/30 bg-bull/10 px-4 py-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bull/20 font-semibold text-bull-400">{{ $sponsor->initials() }}</span>
+            <div class="text-sm">
+                <div class="text-ink-400">Referred by</div>
+                <div class="font-medium text-ink-100">{{ $sponsor->name }}</div>
             </div>
-            <input type="hidden" name="sponsor_code" value="{{ $sponsor->referral_code }}">
-        @else
-            <div>
-                <x-input-label for="sponsor_code" value="Referral code" />
-                <x-text-input id="sponsor_code" name="sponsor_code" :value="$refCode" class="font-mono uppercase placeholder:normal-case" placeholder="e.g. GVEAB12CD" required />
-                <p class="field-help">Required. Use the referral link or code of the person who invited you.</p>
-                <x-input-error :messages="$errors->get('sponsor_code')" />
-            </div>
-        @endif
+        </div>
+        <input type="hidden" name="sponsor_code" value="{{ $sponsor->referral_code }}">
+        <x-input-error :messages="$errors->get('sponsor_code')" />
 
         {{-- Step 1: package --}}
         <fieldset x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }} }">
@@ -72,16 +77,11 @@
                 Your details
             </legend>
 
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="grid gap-4">
                 <div>
                     <x-input-label for="name" value="Full name" />
                     <x-text-input id="name" name="name" :value="old('name')" required autofocus autocomplete="name" />
                     <x-input-error :messages="$errors->get('name')" />
-                </div>
-                <div>
-                    <x-input-label for="username" value="Username" />
-                    <x-text-input id="username" name="username" :value="old('username')" required autocomplete="username" />
-                    <x-input-error :messages="$errors->get('username')" />
                 </div>
             </div>
 
@@ -108,7 +108,7 @@
                     <x-input-error :messages="$errors->get('country')" />
                 </div>
             </div>
-            <p class="text-xs text-ink-400">Email, username, mobile number and CNIC must not already be registered.</p>
+            <p class="text-xs text-ink-400">Email, mobile number and CNIC must not already be registered. Your username and referral code are created for you.</p>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -152,6 +152,7 @@
 
         <x-primary-button class="w-full py-3">Create account</x-primary-button>
     </form>
+    @endunless
 
     <p class="mt-8 text-center text-sm text-ink-400">
         Already a member?

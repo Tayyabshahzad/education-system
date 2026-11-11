@@ -41,9 +41,21 @@ class RegistrationTest extends TestCase
         ], $overrides);
     }
 
-    public function test_registration_screen_can_be_rendered(): void
+    public function test_registration_form_opens_from_a_referral_link_without_username_or_code_fields(): void
     {
-        $this->get('/register')->assertOk()->assertSee('Choose your amount')->assertSee('Payment screenshot');
+        $this->get('/register?ref='.$this->sponsor->referral_code)
+            ->assertOk()
+            ->assertSee('Choose your amount')
+            ->assertSee('Payment screenshot')
+            ->assertSee($this->sponsor->name)
+            ->assertDontSee('name="username"', false)
+            ->assertDontSee('id="sponsor_code"', false);
+    }
+
+    public function test_registration_without_a_valid_referral_link_shows_invitation_notice(): void
+    {
+        $this->get('/register')->assertOk()->assertSee('You need an invitation link')->assertDontSee('name="proof"', false);
+        $this->get('/register?ref=NOPE')->assertOk()->assertSee('This referral link is not valid');
     }
 
     public function test_registration_creates_pending_member_with_pending_payment(): void

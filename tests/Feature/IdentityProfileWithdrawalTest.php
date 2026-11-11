@@ -45,23 +45,40 @@ class IdentityProfileWithdrawalTest extends TestCase
         $this->post('/register', $this->registerPayload($this->member(), ['cnic' => '3520276543219', 'phone' => '0301-2345678']))
             ->assertSessionHasNoErrors();
 
-        $user = User::firstWhere('username', 'aliraza');
+        $user = User::firstWhere('email', 'ali@example.com');
         $this->assertSame('35202-7654321-9', $user->cnic);
         $this->assertSame('+923012345678', $user->phone);
     }
 
-    public function test_cnic_phone_email_and_username_must_each_be_unique(): void
+    public function test_cnic_phone_and_email_must_each_be_unique(): void
     {
         Storage::fake();
-        $existing = $this->member(['cnic' => '35202-7654321-9', 'phone' => '+923012345678', 'email' => 'taken@example.com', 'username' => 'takenname']);
+        $existing = $this->member(['cnic' => '35202-7654321-9', 'phone' => '+923012345678', 'email' => 'taken@example.com']);
 
         // Same CNIC / phone typed in a different format is still a duplicate.
         $this->post('/register', $this->registerPayload($existing, ['cnic' => '3520276543219']))->assertSessionHasErrors('cnic');
         $this->post('/register', $this->registerPayload($existing, ['cnic' => '11111-1111111-1', 'phone' => '+92 301 2345678']))->assertSessionHasErrors('phone');
         $this->post('/register', $this->registerPayload($existing, ['cnic' => '11111-1111111-1', 'phone' => '03009999999', 'email' => 'taken@example.com']))->assertSessionHasErrors('email');
-        $this->post('/register', $this->registerPayload($existing, ['cnic' => '11111-1111111-1', 'phone' => '03009999999', 'username' => 'takenname']))->assertSessionHasErrors('username');
 
         $this->assertSame(1, User::count());
+    }
+
+    public function test_username_is_always_system_generated_and_unique(): void
+    {
+        Storage::fake();
+        $sponsor = $this->member();
+
+        // A username sent in the request is ignored.
+        $this->post('/register', $this->registerPayload($sponsor, ['username' => 'iwantthis', 'name' => 'Ali Raza']))
+            ->assertSessionHasNoErrors();
+        $ali = User::firstWhere('email', 'ali@example.com');
+        $this->assertNotSame('iwantthis', $ali->username);
+        $this->assertMatchesRegularExpression('/^alir\d{4}$/', $ali->username);
+
+        // Two people with the same name still get different usernames.
+        $twin = $this->member(['name' => 'Ali Raza', 'username' => null]);
+        $this->assertNotSame($ali->username, $twin->username);
+        $this->assertMatchesRegularExpression('/^alir\d{4}$/', $twin->username);
     }
 
     public function test_cnic_is_required_and_must_be_13_digits(): void
@@ -72,15 +89,18 @@ class IdentityProfileWithdrawalTest extends TestCase
         $this->post('/register', $this->registerPayload($sponsor, ['cnic' => '12345-123']))->assertSessionHasErrors('cnic');
     }
 
-    public function test_referral_code_is_generated_from_username_name_and_cnic(): void
+    public function test_referral_code_is_generated_from_first_name_last_name_and_cnic(): void
     {
-        $user = $this->member(['username' => 'tayyab', 'name' => 'Muhammad Tayyab', 'cnic' => '35202-1234567-1']);
-        $this->assertSame('TAYYMT5671', $user->referral_code);
+        $user = $this->member(['name' => 'Muhammad Tayyab', 'cnic' => '35202-1234567-1']);
+        $this->assertSame('MUHTAY5671', $user->referral_code);
 
         // Same ingredients again -> still unique, with a random suffix.
-        $twin = $this->member(['username' => 'tayyab2', 'name' => 'Muhammad Tayyab', 'cnic' => '35202-9995671-1']);
-        $this->assertStringStartsWith('TAYYMT', $twin->referral_code);
+        $twin = $this->member(['name' => 'Muhammad Tayyab', 'cnic' => '35202-9995567-1']);
+        $this->assertStringStartsWith('MUHTAY5671', $twin->referral_code);
         $this->assertNotSame($user->referral_code, $twin->referral_code);
+
+        // Middle names are skipped: first + last word.
+        $this->assertStringStartsWith('ALIKHA', $this->member(['name' => 'Ali Ahmed Khan', 'cnic' => '35202-1111111-2'])->referral_code);
     }
 
     public function test_members_cannot_set_their_own_referral_code(): void
@@ -88,7 +108,7 @@ class IdentityProfileWithdrawalTest extends TestCase
         Storage::fake();
         $this->post('/register', $this->registerPayload($this->member(), ['referral_code' => 'MYCODE']))->assertSessionHasNoErrors();
 
-        $this->assertNotSame('MYCODE', User::firstWhere('username', 'aliraza')->referral_code);
+        $this->assertNotSame('MYCODE', User::firstWhere('email', 'ali@example.com')->referral_code);
     }
 
     /* ---------- Profile picture ---------- */

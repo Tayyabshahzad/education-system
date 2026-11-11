@@ -49,7 +49,7 @@ class TeamUserController extends Controller
         abort_unless($user->hasRole($role), 404);
         $data = $this->validated($request, $user);
 
-        $user->fill(collect($data)->only(['name', 'username', 'email', 'phone'])->all());
+        $user->fill(collect($data)->only(['name', 'email', 'phone'])->all());
         if (! empty($data['password'])) {
             $user->password = $data['password'];
         }
@@ -81,7 +81,6 @@ class TeamUserController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'min:4', 'max:30', 'alpha_dash', Rule::unique('users')->ignore($user)],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users')->ignore($user)],
             'phone' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', Rule::unique('users')->ignore($user)],
             'password' => [$user ? 'nullable' : 'required', 'confirmed', Password::defaults()],

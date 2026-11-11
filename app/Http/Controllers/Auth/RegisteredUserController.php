@@ -69,6 +69,6 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         return redirect()->route('dashboard')
-            ->with('success', 'Account created. Your payment screenshot has been submitted and will be reviewed shortly.');
+            ->with('success', "Account created. Your username is {$user->username}. Your payment screenshot has been submitted and will be reviewed shortly.");
     }
 }

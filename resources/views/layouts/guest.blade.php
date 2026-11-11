@@ -50,7 +50,7 @@
 <div class="min-h-full lg:grid lg:grid-cols-[1.05fr_1fr]">
 
     {{-- ===== Brand panel (desktop) ===== --}}
-    <aside class="relative hidden lg:flex flex-col overflow-hidden border-r border-ink-700 bg-ink-900">
+    <aside class="relative hidden h-screen flex-col self-start overflow-hidden border-r border-ink-700 bg-ink-900 lg:sticky lg:top-0 lg:flex">
         <div class="absolute inset-0 grid-bg"></div>
         <div class="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-gold/10 blur-3xl"></div>
         <div class="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-bull/10 blur-3xl"></div>
@@ -67,7 +67,7 @@
             </div>
         </div>
 
-        <div class="relative z-10 flex flex-1 flex-col justify-between gap-10 p-12 xl:p-16">
+        <div class="relative z-10 flex min-h-0 flex-1 flex-col justify-between gap-8 overflow-y-auto px-12 py-10 xl:px-16">
             <a href="/" class="flex items-center gap-3">
                 <x-application-logo class="h-11 w-11" />
                 <div class="leading-tight">
@@ -91,7 +91,7 @@
                 </p>
 
                 {{-- Decorative candlestick chart --}}
-                <div class="mt-10 rounded-2xl border border-ink-700 bg-ink-950/70 p-5 backdrop-blur">
+                <div class="mt-8 rounded-2xl border border-ink-700 bg-ink-950/70 p-5 backdrop-blur">
                     <div class="mb-3 flex items-center justify-between font-mono text-xs text-ink-400">
                         <span class="text-ink-200">XAU/USD · H4</span>
                         <span class="flex gap-3"><span>1H</span><span class="text-gold">4H</span><span>1D</span></span>

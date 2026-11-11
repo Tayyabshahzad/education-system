@@ -13,7 +13,7 @@ class StaffAccountService
         return DB::transaction(function () use ($data, $role, $creator, $permissions) {
             $user = new User([
                 'name' => $data['name'],
-                'username' => $data['username'],
+                'username' => $data['username'] ?? null, // null = system generates one
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
                 'password' => $data['password'],

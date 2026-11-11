@@ -79,7 +79,7 @@ class AccessAndTeamTest extends TestCase
                 'password' => 'password', 'password_confirmation' => 'password',
             ])->assertSessionHasNoErrors();
 
-            $this->assertTrue(User::firstWhere('username', $username)->hasRole($role));
+            $this->assertTrue(User::firstWhere('email', "{$username}@example.com")->hasRole($role));
         }
     }
 
@@ -107,7 +107,7 @@ class AccessAndTeamTest extends TestCase
         // After that every member needs a sponsor.
         $this->actingAs($admin)->post(route('admin.users.store'), ['role' => User::ROLE_MEMBER] + $this->newMemberData())
             ->assertSessionHasErrors('sponsor');
-        $this->assertNull(User::firstWhere('username', 'newperson'));
+        $this->assertNull(User::firstWhere('email', 'new@example.com'));
     }
 
     public function test_member_sponsor_cannot_be_cleared_on_edit(): void
@@ -140,7 +140,7 @@ class AccessAndTeamTest extends TestCase
         $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData(['pay_from_wallet' => '1']))
             ->assertSessionHasNoErrors();
 
-        $new = User::firstWhere('username', 'newperson');
+        $new = User::firstWhere('email', 'new@example.com');
         $this->assertSame($sponsor->id, $new->sponsor_id);
         $this->assertSame('active', $new->status);
         $this->assertEquals(200, $new->paid_amount);
@@ -155,13 +155,13 @@ class AccessAndTeamTest extends TestCase
 
         // Without wallet payment, a screenshot is required.
         $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData())->assertSessionHasErrors('proof');
-        $this->assertNull(User::firstWhere('username', 'newperson'));
+        $this->assertNull(User::firstWhere('email', 'new@example.com'));
 
         $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData([
             'proof' => UploadedFile::fake()->image('pay.jpg', 1000, 1600),
         ]))->assertSessionHasNoErrors();
 
-        $new = User::firstWhere('username', 'newperson');
+        $new = User::firstWhere('email', 'new@example.com');
         $this->assertSame($sponsor->id, $new->sponsor_id, 'Members can only register people under themselves');
         $this->assertSame('pending', $new->status);
 
@@ -182,7 +182,7 @@ class AccessAndTeamTest extends TestCase
             'proof' => UploadedFile::fake()->image('pay.jpg'),
         ]));
 
-        $this->assertSame($sponsor->id, User::firstWhere('username', 'newperson')->sponsor_id);
+        $this->assertSame($sponsor->id, User::firstWhere('email', 'new@example.com')->sponsor_id);
     }
 
     public function test_member_can_only_view_own_downline_tree(): void
@@ -207,7 +207,7 @@ class AccessAndTeamTest extends TestCase
             'role' => User::ROLE_MEMBER, 'sponsor' => $sponsor->username, 'mark_paid' => '1',
         ]))->assertSessionHasNoErrors();
 
-        $new = User::firstWhere('username', 'newperson');
+        $new = User::firstWhere('email', 'new@example.com');
         $this->assertSame($sponsor->id, $new->sponsor_id);
         $this->assertSame('active', $new->status);
         $this->assertEquals(30, $sponsor->fresh()->wallet_balance);

@@ -48,11 +48,6 @@
                             <x-input-error :messages="$errors->get('name')" />
                         </div>
                         <div>
-                            <x-input-label for="username" value="Username" />
-                            <x-text-input id="username" name="username" :value="old('username')" required autocomplete="off" />
-                            <x-input-error :messages="$errors->get('username')" />
-                        </div>
-                        <div>
                             <x-input-label for="email" value="Email (login)" />
                             <x-text-input id="email" type="email" name="email" :value="old('email')" required autocomplete="off" />
                             <x-input-error :messages="$errors->get('email')" />

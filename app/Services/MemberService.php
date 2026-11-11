@@ -21,7 +21,7 @@ class MemberService
         return DB::transaction(function () use ($data, $sponsor, $creator, $funding, $fundAmount) {
             $user = User::create([
                 'name' => $data['name'],
-                'username' => $data['username'],
+                'username' => $data['username'] ?? null, // null = system generates one
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
                 'cnic' => $data['cnic'] ?? null,
