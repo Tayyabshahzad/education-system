@@ -22,7 +22,7 @@
                         @endforeach
                     </select>
                     @if ($teachers->isEmpty())
-                        <p class="field-help">No teachers yet. @can('teachers.manage')<a href="{{ route('admin.teachers.create') }}" class="link">Add a teacher</a>@endcan</p>
+                        <p class="field-help">No teachers yet. @can('teachers.manage')<a href="{{ route('admin.users.create', ['role' => 'teacher']) }}" class="link">Add a teacher</a>@endcan</p>
                     @endif
                 </div>
                 <div>

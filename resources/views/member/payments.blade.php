@@ -82,25 +82,22 @@
                             <x-input-error :messages="$errors->get('amount')" />
                         </div>
 
-                        <div x-show="method === 'proof'" class="space-y-5">
+                        {{-- x-if (not x-show) so the required screenshot input is removed when paying from wallet --}}
+                        <template x-if="method === 'proof'">
+                        <div class="space-y-5">
                             @if ($instructions)
                                 <div class="rounded-lg border border-ink-700 bg-ink-800/50 p-4">
                                     <div class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Send payment to</div>
                                     <p class="whitespace-pre-line text-sm text-ink-200">{{ $instructions }}</p>
                                 </div>
                             @endif
-                            <div>
-                                <x-input-label for="proof" value="Payment screenshot / receipt" />
-                                <input id="proof" type="file" name="proof" accept="image/*,application/pdf"
-                                       class="block w-full text-sm text-ink-400 file:mr-3 file:rounded-lg file:border-0 file:bg-ink-700 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-ink-600">
-                                <p class="field-help">JPG, PNG, WEBP or PDF, up to 5 MB.</p>
-                                <x-input-error :messages="$errors->get('proof')" />
-                            </div>
+                            <x-proof-upload />
                             <div>
                                 <x-input-label for="reference" value="Transaction ID / reference (optional)" />
                                 <x-text-input id="reference" name="reference" :value="old('reference')" />
                             </div>
                         </div>
+                        </template>
 
                         <button class="btn btn-primary w-full" :disabled="method === 'wallet' && Number(amount) > {{ $wallet }}">
                             <span x-text="method === 'wallet' ? 'Pay from wallet' : 'Submit for review'">Submit for review</span>

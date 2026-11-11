@@ -1,7 +1,7 @@
 <x-app-layout title="Members">
     <x-slot:actions>
         @can('members.create')
-            <a href="{{ route('admin.members.create') }}" class="btn btn-primary btn-sm"><x-icon name="user-plus" class="h-4 w-4" /> Add member</a>
+            <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-sm"><x-icon name="user-plus" class="h-4 w-4" /> Add user</a>
         @endcan
     </x-slot:actions>
 

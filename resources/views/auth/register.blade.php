@@ -1,10 +1,10 @@
 <x-guest-layout title="Create account" width="max-w-xl">
     <div class="mb-7">
         <h2 class="font-display text-3xl font-semibold text-white">Start your trading journey</h2>
-        <p class="mt-2 text-sm text-ink-400">Choose your amount and create your account. You will submit your payment proof after registration.</p>
+        <p class="mt-2 text-sm text-ink-400">Choose your amount, fill in your details and attach your payment screenshot.</p>
     </div>
 
-    <form method="POST" action="{{ route('register') }}" class="space-y-6">
+    <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
         {{-- Referral --}}
@@ -21,8 +21,9 @@
             <input type="hidden" name="sponsor_code" value="{{ $sponsor->referral_code }}">
         @else
             <div>
-                <x-input-label for="sponsor_code" value="Referral code (optional)" />
-                <x-text-input id="sponsor_code" name="sponsor_code" :value="$refCode" class="font-mono uppercase placeholder:normal-case" placeholder="e.g. GVEAB12CD" />
+                <x-input-label for="sponsor_code" value="Referral code" />
+                <x-text-input id="sponsor_code" name="sponsor_code" :value="$refCode" class="font-mono uppercase placeholder:normal-case" placeholder="e.g. GVEAB12CD" required />
+                <p class="field-help">Required. Use the referral link or code of the person who invited you.</p>
                 <x-input-error :messages="$errors->get('sponsor_code')" />
             </div>
         @endif
@@ -113,6 +114,25 @@
                     <x-input-label for="password_confirmation" value="Confirm password" />
                     <x-text-input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" />
                 </div>
+            </div>
+        </fieldset>
+
+        {{-- Step 3: payment --}}
+        <fieldset class="space-y-4">
+            <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">3</span>
+                Payment
+            </legend>
+            @if ($instructions)
+                <div class="rounded-xl border border-ink-700 bg-ink-800/50 p-4">
+                    <div class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Send your amount to</div>
+                    <p class="whitespace-pre-line text-sm text-ink-200">{{ $instructions }}</p>
+                </div>
+            @endif
+            <x-proof-upload />
+            <div>
+                <x-input-label for="reference" value="Transaction ID / reference (optional)" />
+                <x-text-input id="reference" name="reference" :value="old('reference')" />
             </div>
         </fieldset>
 

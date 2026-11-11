@@ -69,7 +69,7 @@
                 <h3 class="card-title">Newest members</h3>
                 <div class="flex gap-2">
                     @can('members.create')
-                        <a href="{{ route('admin.members.create') }}" class="btn btn-primary btn-sm"><x-icon name="user-plus" class="h-4 w-4" /> Add member</a>
+                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-sm"><x-icon name="user-plus" class="h-4 w-4" /> Add user</a>
                     @endcan
                     <a href="{{ route('admin.members.index') }}" class="btn btn-secondary btn-sm">All members</a>
                 </div>

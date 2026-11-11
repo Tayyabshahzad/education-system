@@ -60,40 +60,6 @@ class MemberController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
-    {
-        $sponsor = $request->query('sponsor') ? User::role(User::ROLE_MEMBER)->find($request->query('sponsor')) : null;
-
-        return view('admin.members.create', [
-            'sponsor' => $sponsor,
-            'minFee' => Setting::money('min_join_fee'),
-            'fullFee' => Setting::money('full_fee'),
-            'maxFee' => Setting::money('max_fee'),
-        ]);
-    }
-
-    public function store(Request $request, MemberService $members): RedirectResponse
-    {
-        $validated = $request->validate([
-            ...MemberDetailsRules::rules(),
-            'sponsor' => ['nullable', 'string'],
-            'mark_paid' => ['boolean'],
-        ]);
-
-        $sponsor = $this->resolveSponsor($validated['sponsor'] ?? null);
-        $markPaid = $request->boolean('mark_paid');
-
-        $member = $members->create(
-            $validated,
-            $sponsor,
-            $request->user(),
-            $markPaid ? 'received' : null,
-            (float) $validated['joining_amount'],
-        );
-
-        return redirect()->route('admin.members.show', $member)->with('success', "Member {$member->username} created".($markPaid ? ' and payment recorded.' : '.'));
-    }
-
     public function edit(User $member): View
     {
         $this->ensureMember($member);
@@ -105,9 +71,12 @@ class MemberController extends Controller
     {
         $this->ensureMember($member);
 
+        // A member who sits under someone must stay under someone; only the tree root has no sponsor.
         $validated = $request->validate([
             ...MemberDetailsRules::rules($member, passwordRequired: false),
-            'sponsor' => ['nullable', 'string'],
+            'sponsor' => [$member->sponsor_id ? 'required' : 'nullable', 'string'],
+        ], [
+            'sponsor.required' => 'Every member must stay under a sponsor.',
         ]);
 
         $member->fill(collect($validated)->only(['name', 'username', 'email', 'phone', 'country'])->all());

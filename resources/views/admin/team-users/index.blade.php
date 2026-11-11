@@ -6,7 +6,7 @@
 <x-app-layout :title="$isStaff ? 'Staff & Access' : 'Teachers'"
               :subtitle="$isStaff ? 'Staff members only see the sections you allow. The super admin always has full access.' : 'Teachers can log in to see their batches, schedules and student lists.'">
     <x-slot:actions>
-        <a href="{{ route($prefix.'.create') }}" class="btn btn-primary btn-sm">{{ $isStaff ? 'Add staff' : 'Add teacher' }}</a>
+        <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary btn-sm">{{ $isStaff ? 'Add staff' : 'Add teacher' }}</a>
     </x-slot:actions>
 
     <div class="card">

@@ -11,19 +11,25 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
-    public function __construct(private WalletService $wallet) {}
+    public function __construct(
+        private WalletService $wallet,
+        private ProofImageService $proofImages,
+    ) {}
 
-    /** Member uploads a payment proof; it waits for staff review. */
-    public function submitProof(User $user, float $amount, UploadedFile $proof, ?string $reference): Payment
+    /**
+     * A payment screenshot is submitted for $member and waits for staff review.
+     * $submittedBy is the member themselves, or the sponsor who registered them.
+     */
+    public function submitProof(User $member, float $amount, UploadedFile $proof, ?string $reference, ?User $submittedBy = null): Payment
     {
-        $this->assertAmountAllowed($user, $amount);
+        $this->assertAmountAllowed($member, $amount);
 
         return Payment::create([
-            'user_id' => $user->id,
-            'paid_by' => $user->id,
+            'user_id' => $member->id,
+            'paid_by' => ($submittedBy ?? $member)->id,
             'amount' => $amount,
             'method' => 'proof',
-            'proof_path' => $proof->store('payment-proofs'),
+            'proof_path' => $this->proofImages->store($proof),
             'reference' => $reference,
         ]);
     }

@@ -7,7 +7,7 @@
             <a href="{{ route('admin.members.edit', $member) }}" class="btn btn-secondary btn-sm">Edit</a>
         @endcan
         @can('members.create')
-            <a href="{{ route('admin.members.create', ['sponsor' => $member->id]) }}" class="btn btn-primary btn-sm hidden sm:inline-flex"><x-icon name="user-plus" class="h-4 w-4" /> Add under</a>
+            <a href="{{ route('admin.users.create', ['role' => 'member', 'sponsor' => $member->id]) }}" class="btn btn-primary btn-sm hidden sm:inline-flex"><x-icon name="user-plus" class="h-4 w-4" /> Add under</a>
         @endcan
     </x-slot:actions>
 

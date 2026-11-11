@@ -52,6 +52,7 @@
         ];
         $sections['Members'] = [
             ['All Members', 'admin.members.index', 'users', 'admin.members.*', $authUser->can('members.view')],
+            ['Add User', 'admin.users.create', 'user-plus', 'admin.users.*', $authUser->canAny(['members.create', 'staff.manage', 'teachers.manage'])],
             ['Genealogy', 'admin.genealogy', 'tree', 'admin.genealogy', $authUser->can('members.view')],
         ];
         $sections['Finance'] = [

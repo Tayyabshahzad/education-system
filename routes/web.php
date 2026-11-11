@@ -43,10 +43,12 @@ Route::middleware('auth')->group(function () {
 
     /* ---------------- Admin / staff area ---------------- */
     Route::middleware('role:'.User::ROLE_SUPER_ADMIN.'|'.User::ROLE_STAFF)->prefix('admin')->name('admin.')->group(function () {
+        // One "Add user" screen for every role; which roles are allowed is checked in the controller.
+        Route::get('/users/create', [Admin\UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [Admin\UserController::class, 'store'])->name('users.store');
+
         Route::controller(Admin\MemberController::class)->group(function () {
             Route::get('/members', 'index')->middleware('can:members.view')->name('members.index');
-            Route::get('/members/create', 'create')->middleware('can:members.create')->name('members.create');
-            Route::post('/members', 'store')->middleware('can:members.create')->name('members.store');
             Route::get('/members/{member}', 'show')->middleware('can:members.view')->name('members.show');
             Route::get('/members/{member}/edit', 'edit')->middleware('can:members.edit')->name('members.edit');
             Route::put('/members/{member}', 'update')->middleware('can:members.edit')->name('members.update');
@@ -77,8 +79,6 @@ Route::middleware('auth')->group(function () {
         foreach (['teachers' => [User::ROLE_TEACHER, 'teachers.manage'], 'staff' => [User::ROLE_STAFF, 'staff.manage']] as $path => [$role, $ability]) {
             Route::middleware("can:{$ability}")->controller(Admin\TeamUserController::class)->group(function () use ($path, $role) {
                 Route::get("/{$path}", 'index')->name("{$path}.index")->defaults('role', $role);
-                Route::get("/{$path}/create", 'create')->name("{$path}.create")->defaults('role', $role);
-                Route::post("/{$path}", 'store')->name("{$path}.store")->defaults('role', $role);
                 Route::get("/{$path}/{user}/edit", 'edit')->name("{$path}.edit")->defaults('role', $role);
                 Route::put("/{$path}/{user}", 'update')->name("{$path}.update")->defaults('role', $role);
                 Route::delete("/{$path}/{user}", 'destroy')->name("{$path}.destroy")->defaults('role', $role);

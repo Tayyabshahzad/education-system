@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Batch;
+use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AccessAndTeamTest extends TestCase
@@ -50,7 +53,8 @@ class AccessAndTeamTest extends TestCase
     public function test_super_admin_grants_staff_permissions(): void
     {
         $admin = $this->superAdmin();
-        $this->actingAs($admin)->post(route('admin.staff.store'), [
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'role' => User::ROLE_STAFF,
             'name' => 'Ops', 'username' => 'opsuser', 'email' => 'ops@example.com',
             'password' => 'password', 'password_confirmation' => 'password',
             'permissions' => ['payments.view', 'payments.review'],
@@ -58,8 +62,65 @@ class AccessAndTeamTest extends TestCase
 
         $ops = User::firstWhere('email', 'ops@example.com');
         $this->assertTrue($ops->hasRole(User::ROLE_STAFF));
+        $this->assertNull($ops->sponsor_id, 'Staff never join the referral tree');
+        $this->assertSame('active', $ops->status);
         $this->assertTrue($ops->can('payments.review'));
         $this->assertFalse($ops->can('settings.manage'));
+    }
+
+    public function test_admin_creates_teacher_and_super_admin_with_roles(): void
+    {
+        $admin = $this->superAdmin();
+        $this->member(); // a member exists, but staff-side roles never need a sponsor
+
+        foreach ([User::ROLE_TEACHER => 'teach1', User::ROLE_SUPER_ADMIN => 'boss1'] as $role => $username) {
+            $this->actingAs($admin)->post(route('admin.users.store'), [
+                'role' => $role, 'name' => 'X', 'username' => $username, 'email' => "{$username}@example.com",
+                'password' => 'password', 'password_confirmation' => 'password',
+            ])->assertSessionHasNoErrors();
+
+            $this->assertTrue(User::firstWhere('username', $username)->hasRole($role));
+        }
+    }
+
+    public function test_staff_can_only_create_roles_they_manage(): void
+    {
+        $staff = $this->staff(['members.create']);
+
+        $this->actingAs($staff)->get(route('admin.users.create'))->assertOk()->assertDontSee('Super Admin');
+        $this->actingAs($staff)->post(route('admin.users.store'), [
+            'role' => User::ROLE_STAFF, 'name' => 'X', 'username' => 'sneaky', 'email' => 's@example.com',
+            'password' => 'password', 'password_confirmation' => 'password',
+        ])->assertSessionHasErrors('role');
+
+        $this->actingAs($this->staff(['members.view']))->get(route('admin.users.create'))->assertForbidden();
+    }
+
+    public function test_new_member_must_have_a_sponsor_once_the_tree_has_a_root(): void
+    {
+        $admin = $this->superAdmin();
+
+        // First member ever may be the root.
+        $this->actingAs($admin)->post(route('admin.users.store'), ['role' => User::ROLE_MEMBER] + $this->newMemberData(['username' => 'rootuser', 'email' => 'root@example.com']))
+            ->assertSessionHasNoErrors();
+
+        // After that every member needs a sponsor.
+        $this->actingAs($admin)->post(route('admin.users.store'), ['role' => User::ROLE_MEMBER] + $this->newMemberData())
+            ->assertSessionHasErrors('sponsor');
+        $this->assertNull(User::firstWhere('username', 'newperson'));
+    }
+
+    public function test_member_sponsor_cannot_be_cleared_on_edit(): void
+    {
+        $a = $this->member();
+        $b = $this->member(sponsor: $a);
+
+        $this->actingAs($this->superAdmin())->put(route('admin.members.update', $b), [
+            'name' => $b->name, 'username' => $b->username, 'email' => $b->email,
+            'phone' => '1', 'country' => 'PK', 'sponsor' => '',
+        ])->assertSessionHasErrors('sponsor');
+
+        $this->assertSame($a->id, $b->fresh()->sponsor_id);
     }
 
     public function test_blocked_user_is_logged_out(): void
@@ -87,15 +148,41 @@ class AccessAndTeamTest extends TestCase
         $this->assertEquals(80, $sponsor->fresh()->wallet_balance);
     }
 
-    public function test_member_registers_downline_without_paying(): void
+    public function test_member_registers_downline_with_payment_screenshot(): void
     {
+        Storage::fake();
         $sponsor = $this->member();
 
-        $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData())->assertSessionHasNoErrors();
+        // Without wallet payment, a screenshot is required.
+        $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData())->assertSessionHasErrors('proof');
+        $this->assertNull(User::firstWhere('username', 'newperson'));
+
+        $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData([
+            'proof' => UploadedFile::fake()->image('pay.jpg', 1000, 1600),
+        ]))->assertSessionHasNoErrors();
 
         $new = User::firstWhere('username', 'newperson');
+        $this->assertSame($sponsor->id, $new->sponsor_id, 'Members can only register people under themselves');
         $this->assertSame('pending', $new->status);
-        $this->assertEquals(0, $new->paid_amount);
+
+        $payment = Payment::sole();
+        $this->assertSame($new->id, $payment->user_id);
+        $this->assertSame($sponsor->id, $payment->paid_by);
+        $this->assertSame('pending', $payment->status);
+    }
+
+    public function test_member_cannot_choose_a_different_sponsor_when_registering(): void
+    {
+        Storage::fake();
+        $sponsor = $this->member();
+        $other = $this->member();
+
+        $this->actingAs($sponsor)->post(route('team.store'), $this->newMemberData([
+            'sponsor_id' => $other->id, 'sponsor' => $other->username,
+            'proof' => UploadedFile::fake()->image('pay.jpg'),
+        ]));
+
+        $this->assertSame($sponsor->id, User::firstWhere('username', 'newperson')->sponsor_id);
     }
 
     public function test_member_can_only_view_own_downline_tree(): void
@@ -116,8 +203,8 @@ class AccessAndTeamTest extends TestCase
         $sponsor = $this->member();
         $sponsor->forceFill(['status' => 'active', 'paid_amount' => 200])->save();
 
-        $this->actingAs($this->superAdmin())->post(route('admin.members.store'), $this->newMemberData([
-            'sponsor' => $sponsor->username, 'mark_paid' => '1',
+        $this->actingAs($this->superAdmin())->post(route('admin.users.store'), $this->newMemberData([
+            'role' => User::ROLE_MEMBER, 'sponsor' => $sponsor->username, 'mark_paid' => '1',
         ]))->assertSessionHasNoErrors();
 
         $new = User::firstWhere('username', 'newperson');

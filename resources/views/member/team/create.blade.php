@@ -1,5 +1,5 @@
 <x-app-layout title="Register a Member" subtitle="Create an account for someone directly under you. They will appear in your level 1 team.">
-    <form method="POST" action="{{ route('team.store') }}" class="grid gap-6 xl:grid-cols-3"
+    <form method="POST" action="{{ route('team.store') }}" enctype="multipart/form-data" class="grid gap-6 xl:grid-cols-3"
           x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }}, payNow: {{ old('pay_from_wallet') ? 'true' : 'false' }}, wallet: {{ $wallet }} }">
         @csrf
 
@@ -29,8 +29,17 @@
                         </span>
                     </label>
                     <p x-show="payNow && amount > wallet" x-cloak class="rounded-lg bg-bear/10 px-3 py-2 text-xs text-bear-400">Your wallet balance is lower than the joining amount.</p>
-                    <p x-show="!payNow" class="text-xs text-ink-400">If unchecked, the member logs in and submits their own payment proof.</p>
                     <x-input-error :messages="$errors->get('pay_from_wallet')" />
+                    {{-- Not paying from wallet: a payment screenshot is required --}}
+                    <template x-if="!payNow">
+                        <div class="space-y-4 border-t border-ink-700 pt-4">
+                            <x-proof-upload label="Payment screenshot (required)" />
+                            <div>
+                                <x-input-label for="reference" value="Transaction ID (optional)" />
+                                <x-text-input id="reference" name="reference" :value="old('reference')" />
+                            </div>
+                        </div>
+                    </template>
                     <button class="btn btn-primary w-full" :disabled="payNow && amount > wallet">Register member</button>
                 </div>
             </div>

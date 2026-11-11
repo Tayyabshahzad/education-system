@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ProofRules;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Services\PaymentService;
@@ -38,9 +39,8 @@ class PaymentController extends Controller
         $data = $request->validate([
             'method' => ['required', Rule::in(['proof', 'wallet'])],
             'amount' => ['required', 'numeric', 'min:1'],
-            'proof' => ['required_if:method,proof', 'nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-            'reference' => ['nullable', 'string', 'max:100'],
-        ]);
+            ...($request->input('method') === 'wallet' ? [] : ProofRules::required()),
+        ], ProofRules::messages());
 
         $user = $request->user();
         $amount = round((float) $data['amount'], 2);

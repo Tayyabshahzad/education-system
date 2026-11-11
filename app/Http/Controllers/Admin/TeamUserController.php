@@ -31,37 +31,6 @@ class TeamUserController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
-    {
-        $role = $this->role($request);
-
-        return view('admin.team-users.form', [
-            'role' => $role,
-            'user' => new User,
-            'granted' => $role === User::ROLE_STAFF ? Permissions::STAFF_DEFAULTS : [],
-        ]);
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        $role = $this->role($request);
-        $data = $this->validated($request, null);
-
-        $user = new User(collect($data)->only(['name', 'username', 'email', 'phone', 'password'])->all());
-        $user->created_by = $request->user()->id;
-        $user->save();
-
-        // Staff/teachers are active immediately and never join the referral tree.
-        $user->forceFill(['status' => 'active'])->save();
-        $user->assignRole($role);
-
-        if ($role === User::ROLE_STAFF) {
-            $user->syncPermissions($data['permissions'] ?? []);
-        }
-
-        return redirect()->route($this->routePrefix($role).'.index')->with('success', ucfirst($role)." {$user->name} created.");
-    }
-
     public function edit(Request $request, User $user): View
     {
         $role = $this->role($request);
