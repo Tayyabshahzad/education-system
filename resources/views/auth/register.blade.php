@@ -31,7 +31,7 @@
         {{-- Step 1: package --}}
         <fieldset x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }} }">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">1</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">1</span>
                 Choose your amount
             </legend>
             <div class="grid gap-3 sm:grid-cols-2">
@@ -68,7 +68,7 @@
         {{-- Step 2: details --}}
         <fieldset class="space-y-4">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">2</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">2</span>
                 Your details
             </legend>
 
@@ -126,7 +126,7 @@
         {{-- Step 3: payment --}}
         <fieldset class="space-y-4">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">3</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">3</span>
                 Payment
             </legend>
             @if ($instructions)

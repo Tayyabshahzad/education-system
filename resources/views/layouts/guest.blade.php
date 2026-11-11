@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#F4F6FA">
+    <meta name="theme-color" content="#0B1530">
 
     <title>{{ $title ? $title.' · ' : '' }}{{ config('app.name') }}</title>
 
@@ -98,7 +98,7 @@
                     </div>
                     <svg viewBox="0 0 {{ $w }} {{ $h }}" class="h-auto w-full" aria-hidden="true">
                         @foreach ([0.25, 0.5, 0.75] as $g)
-                            <line x1="0" x2="{{ $w }}" y1="{{ $h * $g }}" y2="{{ $h * $g }}" stroke="#E2E8F0" stroke-dasharray="3 5"/>
+                            <line x1="0" x2="{{ $w }}" y1="{{ $h * $g }}" y2="{{ $h * $g }}" stroke="#24345E" stroke-dasharray="3 5"/>
                         @endforeach
                         @foreach ($candles as $i => $c)
                             @php

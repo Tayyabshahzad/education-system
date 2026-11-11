@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#F4F6FA">
+    <meta name="theme-color" content="#0B1530">
 
     <title>{{ $title ? $title.' · ' : '' }}{{ config('app.name') }}</title>
 
@@ -76,7 +76,7 @@
 
 <div x-data="{ nav: false }" class="min-h-full">
     {{-- Mobile backdrop --}}
-    <div x-cloak x-show="nav" x-transition.opacity class="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" @click="nav = false"></div>
+    <div x-cloak x-show="nav" x-transition.opacity class="fixed inset-0 z-30 bg-ink-950/80 backdrop-blur-sm lg:hidden" @click="nav = false"></div>
 
     {{-- ===== Sidebar ===== --}}
     <aside class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-ink-700 bg-ink-900 transition-transform lg:translate-x-0"

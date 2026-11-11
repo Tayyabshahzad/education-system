@@ -33,7 +33,7 @@
         </div>
     @elseif ($pendingPayment)
         <div class="mb-6 flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 text-sm">
-            <x-icon name="clock" class="text-sky-700" />
+            <x-icon name="clock" class="text-sky-300" />
             <p class="text-ink-200">Your payment of <span class="money text-ink-100">${{ number_format((float) $pendingPayment->amount, 2) }}</span> is awaiting review. We'll activate it as soon as it's verified.</p>
         </div>
     @elseif (! $user->isFullyPaid())
