@@ -20,7 +20,7 @@
                     <tbody>
                         @foreach ($batch->members as $m)
                             <tr>
-                                <td class="font-medium text-white">{{ $m->name }}</td>
+                                <td class="font-medium text-ink-100">{{ $m->name }}</td>
                                 <td class="text-ink-400">{{ $m->username }}</td>
                                 <td>{{ $m->phone ?: '—' }}</td>
                                 <td class="text-ink-400">{{ $m->email }}</td>

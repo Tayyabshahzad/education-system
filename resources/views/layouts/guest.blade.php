@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#05080F">
+    <meta name="theme-color" content="#F4F6FA">
 
     <title>{{ $title ? $title.' · ' : '' }}{{ config('app.name') }}</title>
 
@@ -71,7 +71,7 @@
             <a href="/" class="flex items-center gap-3">
                 <x-application-logo class="h-11 w-11" />
                 <div class="leading-tight">
-                    <div class="font-display text-lg font-semibold text-white">Global Visioner</div>
+                    <div class="font-display text-lg font-semibold text-ink-100">Global Visioner</div>
                     <div class="text-xs font-medium uppercase tracking-[0.25em] text-gold">Education</div>
                 </div>
             </a>
@@ -81,7 +81,7 @@
                     <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-bull"></span>
                     Forex Trading Academy
                 </p>
-                <h1 class="font-display text-4xl font-semibold leading-tight text-white xl:text-5xl">
+                <h1 class="font-display text-4xl font-semibold leading-tight text-ink-100 xl:text-5xl">
                     Read the market.<br>
                     <span class="text-gradient-gold">Trade with a plan.</span>
                 </h1>
@@ -98,7 +98,7 @@
                     </div>
                     <svg viewBox="0 0 {{ $w }} {{ $h }}" class="h-auto w-full" aria-hidden="true">
                         @foreach ([0.25, 0.5, 0.75] as $g)
-                            <line x1="0" x2="{{ $w }}" y1="{{ $h * $g }}" y2="{{ $h * $g }}" stroke="#1A2338" stroke-dasharray="3 5"/>
+                            <line x1="0" x2="{{ $w }}" y1="{{ $h * $g }}" y2="{{ $h * $g }}" stroke="#E2E8F0" stroke-dasharray="3 5"/>
                         @endforeach
                         @foreach ($candles as $i => $c)
                             @php
@@ -118,7 +118,7 @@
             <ul class="grid grid-cols-3 gap-4 text-sm">
                 @foreach ($features as [$featureTitle, $featureText])
                     <li class="rounded-xl border border-ink-700 bg-ink-800/50 p-4">
-                        <div class="font-medium text-white">{{ $featureTitle }}</div>
+                        <div class="font-medium text-ink-100">{{ $featureTitle }}</div>
                         <div class="mt-1 text-xs text-ink-400">{{ $featureText }}</div>
                     </li>
                 @endforeach
@@ -133,7 +133,7 @@
         <header class="relative z-10 flex items-center px-6 py-5 lg:hidden">
             <a href="/" class="flex items-center gap-2.5">
                 <x-application-logo class="h-9 w-9" />
-                <span class="font-display font-semibold text-white">Global Visioner <span class="text-gold">Education</span></span>
+                <span class="font-display font-semibold text-ink-100">Global Visioner <span class="text-gold">Education</span></span>
             </a>
         </header>
 

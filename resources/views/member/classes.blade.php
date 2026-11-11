@@ -22,14 +22,14 @@
                         <div class="flex items-center gap-3">
                             <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold"><x-icon name="calendar" /></span>
                             <div>
-                                <div class="text-white">{{ $batch->scheduleLabel() }}</div>
+                                <div class="text-ink-100">{{ $batch->scheduleLabel() }}</div>
                                 <div class="text-xs text-ink-400">Starts {{ $batch->start_date?->format('d M Y') ?? 'TBA' }}</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-ink-800 text-ink-400"><x-icon name="teacher" /></span>
                             <div>
-                                <div class="text-white">{{ $batch->teacher?->name ?? 'Mentor to be assigned' }}</div>
+                                <div class="text-ink-100">{{ $batch->teacher?->name ?? 'Mentor to be assigned' }}</div>
                                 <div class="text-xs text-ink-400">Mentor</div>
                             </div>
                         </div>

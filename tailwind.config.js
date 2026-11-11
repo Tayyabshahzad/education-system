@@ -17,18 +17,21 @@ export default {
                 mono: ['"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
             },
             colors: {
+                // Light theme. Names are semantic roles, not lightness:
                 ink: {
-                    950: '#05080F', // page background
-                    900: '#0A0F1C', // panels
-                    800: '#111829', // cards / inputs
-                    700: '#1A2338', // borders
-                    600: '#26314A',
-                    400: '#7C8AA5', // muted text
-                    200: '#C5CEE0',
+                    950: '#F4F6FA', // page background
+                    900: '#FFFFFF', // panels / cards
+                    800: '#F1F4F8', // inputs, inner tiles
+                    700: '#E2E8F0', // borders
+                    600: '#CBD5E1', // strong borders
+                    400: '#5B6B82', // muted text (5:1 on white)
+                    200: '#334155', // body text
+                    100: '#0F172A', // headings / emphasis
                 },
-                bull: { DEFAULT: '#16C784', 400: '#3DDC9B', 600: '#0FA76D' },
-                bear: { DEFAULT: '#EA3943', 400: '#F0626A' },
-                gold: { DEFAULT: '#F5B942', 400: '#F8CB6B', 600: '#D99A1E' },
+                // Darker than the dark-theme versions so text stays readable on white.
+                bull: { DEFAULT: '#059669', 400: '#047857', 600: '#065F46' },
+                bear: { DEFAULT: '#DC2626', 400: '#B91C1C' },
+                gold: { DEFAULT: '#B07410', 400: '#966209', 600: '#7C5108' },
             },
             keyframes: {
                 ticker: { '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },

@@ -38,8 +38,13 @@
                         @foreach ($members as $m)
                             <tr>
                                 <td>
-                                    <a href="{{ route('admin.members.show', $m) }}" class="font-medium text-white hover:text-gold">{{ $m->name }}</a>
-                                    <div class="text-xs text-ink-400">{{ $m->username }} · {{ $m->email }}</div>
+                                    <div class="flex items-center gap-3">
+                                        <x-avatar :user="$m" />
+                                        <div>
+                                            <a href="{{ route('admin.members.show', $m) }}" class="font-medium text-ink-100 hover:text-gold">{{ $m->name }}</a>
+                                            <div class="text-xs text-ink-400">{{ $m->username }} · {{ $m->phone }}</div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="text-ink-400">{{ $m->sponsor?->username ?? '—' }}</td>
                                 <td>{{ $m->referrals_count }}</td>

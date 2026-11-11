@@ -18,7 +18,7 @@ class GenealogyTree
 
         for ($level = 1; $level <= $depth && $parentIds; $level++) {
             $children = User::whereIn('sponsor_id', $parentIds)
-                ->select('id', 'name', 'username', 'sponsor_id', 'status', 'paid_amount', 'created_at')
+                ->select('id', 'name', 'username', 'sponsor_id', 'status', 'paid_amount', 'avatar_path', 'created_at')
                 ->orderBy('id')
                 ->get();
 

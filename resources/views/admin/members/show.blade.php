@@ -17,9 +17,9 @@
             <div class="card">
                 <div class="card-body">
                     <div class="flex items-center gap-4">
-                        <span class="flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 text-xl font-semibold text-gold">{{ $member->initials() }}</span>
+                        <x-avatar :user="$member" size="h-14 w-14" />
                         <div class="min-w-0">
-                            <div class="truncate font-display text-lg font-semibold text-white">{{ $member->name }}</div>
+                            <div class="truncate font-display text-lg font-semibold text-ink-100">{{ $member->name }}</div>
                             <div class="text-sm text-ink-400">{{ $member->username }}</div>
                             <div class="mt-1.5 flex gap-1.5">
                                 <x-status-badge :status="$member->status" />
@@ -30,15 +30,18 @@
                     <dl class="mt-5 space-y-2.5 text-sm">
                         @foreach ([
                             'Email' => $member->email,
-                            'Phone' => $member->phone,
+                            'Mobile' => $member->phone,
+                            'CNIC' => $member->cnic,
                             'Country' => $member->country,
                             'Referral code' => $member->referral_code,
                             'Sponsor' => $member->sponsor?->username,
                             'Chosen amount' => '$'.number_format((float) $member->joining_amount, 2),
                             'Joined' => $member->created_at->format('d M Y, H:i'),
                             'Batches' => $member->batches->pluck('name')->join(', '),
+                            'Payout' => $member->hasPayoutDetails() ? trim($member->payout_method.' · '.$member->bank_name, ' ·') : null,
+                            'Account' => $member->hasPayoutDetails() ? $member->account_title.' · '.$member->account_number : null,
                         ] as $label => $value)
-                            <div class="flex justify-between gap-4"><dt class="text-ink-400">{{ $label }}</dt><dd class="truncate text-right text-white">{{ $value ?: '—' }}</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-ink-400">{{ $label }}</dt><dd class="truncate text-right text-ink-100">{{ $value ?: '—' }}</dd></div>
                         @endforeach
                     </dl>
                 </div>
@@ -110,7 +113,7 @@
                                 @foreach ($payments as $p)
                                     <tr>
                                         <td class="text-ink-400">{{ $p->created_at->format('d M Y') }}</td>
-                                        <td class="money text-white">${{ number_format((float) $p->amount, 2) }}</td>
+                                        <td class="money text-ink-100">${{ number_format((float) $p->amount, 2) }}</td>
                                         <td>{{ $p->methodLabel() }}</td>
                                         <td><x-status-badge :status="$p->status" /></td>
                                         <td class="max-w-[12rem] truncate text-ink-400">{{ $p->note ?: '—' }}</td>
@@ -156,7 +159,7 @@
                             <tbody>
                                 @foreach ($levels[1] as $m)
                                     <tr>
-                                        <td><a href="{{ route('admin.members.show', $m) }}" class="font-medium text-white hover:text-gold">{{ $m->name }}</a><div class="text-xs text-ink-400">{{ $m->username }}</div></td>
+                                        <td><a href="{{ route('admin.members.show', $m) }}" class="font-medium text-ink-100 hover:text-gold">{{ $m->name }}</a><div class="text-xs text-ink-400">{{ $m->username }}</div></td>
                                         <td class="money">${{ number_format((float) $m->paid_amount, 2) }}</td>
                                         <td><x-status-badge :status="$m->status" /></td>
                                     </tr>

@@ -83,7 +83,7 @@ class TeamUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:4', 'max:30', 'alpha_dash', Rule::unique('users')->ignore($user)],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users')->ignore($user)],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', Rule::unique('users')->ignore($user)],
             'password' => [$user ? 'nullable' : 'required', 'confirmed', Password::defaults()],
             'status' => [$user ? 'required' : 'nullable', Rule::in(['active', 'blocked'])],
             'permissions' => ['nullable', 'array'],

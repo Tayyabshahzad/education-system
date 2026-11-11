@@ -16,22 +16,28 @@ class WithdrawalService
 {
     public function __construct(private WalletService $wallet) {}
 
-    public function request(User $user, float $amount, string $method, string $accountDetails): Withdrawal
+    /**
+     * @param  array{method: string, bank_name?: ?string, account_title: string, account_number: string, account_details?: ?string}  $payout
+     */
+    public function request(User $user, float $amount, array $payout): Withdrawal
     {
         $min = Setting::money('min_withdrawal');
         if ($amount < $min) {
             throw ValidationException::withMessages(['amount' => 'Minimum withdrawal is $'.number_format($min, 2).'.']);
         }
 
-        return DB::transaction(function () use ($user, $amount, $method, $accountDetails) {
+        return DB::transaction(function () use ($user, $amount, $payout) {
             $withdrawal = Withdrawal::create([
                 'user_id' => $user->id,
                 'amount' => $amount,
-                'method' => $method,
-                'account_details' => $accountDetails,
+                'method' => $payout['method'],
+                'bank_name' => $payout['bank_name'] ?? null,
+                'account_title' => $payout['account_title'],
+                'account_number' => $payout['account_number'],
+                'account_details' => $payout['account_details'] ?? null,
             ]);
 
-            $this->wallet->debit($user, $amount, 'withdrawal', "Withdrawal request #{$withdrawal->id} ({$method})", $withdrawal);
+            $this->wallet->debit($user, $amount, 'withdrawal', "Withdrawal request #{$withdrawal->id} ({$payout['method']})", $withdrawal);
 
             return $withdrawal;
         });

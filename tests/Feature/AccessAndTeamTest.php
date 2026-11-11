@@ -19,7 +19,7 @@ class AccessAndTeamTest extends TestCase
     {
         return array_merge([
             'name' => 'New Person', 'username' => 'newperson', 'email' => 'new@example.com',
-            'phone' => '0300', 'country' => 'Pakistan', 'joining_amount' => 200,
+            'phone' => '0300 7654321', 'cnic' => '3520276543217', 'country' => 'Pakistan', 'joining_amount' => 200,
             'password' => 'password', 'password_confirmation' => 'password',
         ], $overrides);
     }
@@ -117,7 +117,7 @@ class AccessAndTeamTest extends TestCase
 
         $this->actingAs($this->superAdmin())->put(route('admin.members.update', $b), [
             'name' => $b->name, 'username' => $b->username, 'email' => $b->email,
-            'phone' => '1', 'country' => 'PK', 'sponsor' => '',
+            'phone' => $b->phone, 'cnic' => $b->cnic, 'country' => 'PK', 'sponsor' => '',
         ])->assertSessionHasErrors('sponsor');
 
         $this->assertSame($a->id, $b->fresh()->sponsor_id);
@@ -221,7 +221,7 @@ class AccessAndTeamTest extends TestCase
 
         $this->actingAs($admin)->put(route('admin.members.update', $a), [
             'name' => $a->name, 'username' => $a->username, 'email' => $a->email,
-            'phone' => '1', 'country' => 'PK', 'sponsor' => $b->username,
+            'phone' => $a->phone, 'cnic' => $a->cnic, 'country' => 'PK', 'sponsor' => $b->username,
         ])->assertSessionHasErrors('sponsor');
 
         $this->assertNull($a->fresh()->sponsor_id);

@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MemberDetailsRules;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\CommissionService;
 use App\Services\GenealogyTree;
 use App\Services\MemberService;
 use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -77,6 +79,7 @@ class MemberController extends Controller
             'sponsor' => [$member->sponsor_id ? 'required' : 'nullable', 'string'],
         ], [
             'sponsor.required' => 'Every member must stay under a sponsor.',
+            ...MemberDetailsRules::messages(),
         ]);
 
         $member->fill(collect($validated)->only(['name', 'username', 'email', 'phone', 'country'])->all());
@@ -98,10 +101,16 @@ class MemberController extends Controller
         $this->ensureMember($member);
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'blocked', 'pending'])]]);
 
-        $member->status = $data['status'];
-        $member->save();
+        $released = DB::transaction(function () use ($member, $data) {
+            $locked = User::whereKey($member->id)->lockForUpdate()->firstOrFail();
+            $locked->status = $data['status'];
+            $locked->save();
 
-        return back()->with('success', "{$member->username} is now {$data['status']}.");
+            // A fully-paid member whose commission was held (e.g. blocked at approval) releases it now.
+            return app(CommissionService::class)->releaseIfQualified($locked);
+        });
+
+        return back()->with('success', "{$member->username} is now {$data['status']}.".($released ? ' Upline commission has been released.' : ''));
     }
 
     /** Record money received outside the system (cash / bank) straight from the member page. */

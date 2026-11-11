@@ -22,11 +22,15 @@
         <x-input-error :messages="$errors->get('phone')" />
     </div>
     <div>
+        <x-input-label for="cnic" value="CNIC number" />
+        <x-text-input id="cnic" name="cnic" :value="old('cnic', $member?->cnic)" required inputmode="numeric" maxlength="15" placeholder="35202-1234567-1" class="font-mono" />
+        <x-input-error :messages="$errors->get('cnic')" />
+    </div>
+    <div>
         <x-input-label for="country" value="Country" />
         <x-text-input id="country" name="country" :value="old('country', $member?->country)" required />
         <x-input-error :messages="$errors->get('country')" />
     </div>
-    <div class="hidden sm:block"></div>
     <div>
         <x-input-label for="password" :value="$member ? 'New password (leave blank to keep)' : 'Password'" />
         <x-text-input id="password" type="password" name="password" :required="! $member" autocomplete="new-password" />

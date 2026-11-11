@@ -21,7 +21,7 @@
                     <tbody>
                         @foreach ($users as $u)
                             <tr>
-                                <td><div class="font-medium text-white">{{ $u->name }}</div><div class="text-xs text-ink-400">{{ $u->username }}</div></td>
+                                <td><div class="font-medium text-ink-100">{{ $u->name }}</div><div class="text-xs text-ink-400">{{ $u->username }}</div></td>
                                 <td><div>{{ $u->email }}</div><div class="text-xs text-ink-400">{{ $u->phone ?: '—' }}</div></td>
                                 <td class="!whitespace-normal">
                                     @if ($isStaff)

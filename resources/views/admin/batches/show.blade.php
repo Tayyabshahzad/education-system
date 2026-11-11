@@ -21,7 +21,7 @@
                         <tbody>
                             @foreach ($batch->members as $m)
                                 <tr>
-                                    <td><div class="font-medium text-white">{{ $m->name }}</div><div class="text-xs text-ink-400">{{ $m->username }} · {{ $m->phone }}</div></td>
+                                    <td><div class="font-medium text-ink-100">{{ $m->name }}</div><div class="text-xs text-ink-400">{{ $m->username }} · {{ $m->phone }}</div></td>
                                     <td class="text-ink-400">Added {{ $m->pivot->created_at->format('d M Y') }}</td>
                                     <td class="text-right">
                                         <form method="POST" action="{{ route('admin.batches.unassign', [$batch, $m]) }}">
@@ -58,7 +58,7 @@
                             <label class="flex cursor-pointer items-center gap-3 px-5 py-3 hover:bg-ink-800/40">
                                 <input type="checkbox" name="members[]" value="{{ $m->id }}" x-model="picked" class="rounded border-ink-600 bg-ink-800 text-gold focus:ring-gold/40 focus:ring-offset-ink-950">
                                 <span class="flex-1">
-                                    <span class="block text-sm font-medium text-white">{{ $m->name }}</span>
+                                    <span class="block text-sm font-medium text-ink-100">{{ $m->name }}</span>
                                     <span class="block text-xs text-ink-400">{{ $m->username }}</span>
                                 </span>
                                 @if ($m->batches_count)

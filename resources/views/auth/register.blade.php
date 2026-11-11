@@ -1,6 +1,6 @@
 <x-guest-layout title="Create account" width="max-w-xl">
     <div class="mb-7">
-        <h2 class="font-display text-3xl font-semibold text-white">Start your trading journey</h2>
+        <h2 class="font-display text-3xl font-semibold text-ink-100">Start your trading journey</h2>
         <p class="mt-2 text-sm text-ink-400">Choose your amount, fill in your details and attach your payment screenshot.</p>
     </div>
 
@@ -15,7 +15,7 @@
                 </div>
                 <div class="text-sm">
                     <div class="text-ink-400">Referred by</div>
-                    <div class="font-medium text-white">{{ $sponsor->name }} <span class="font-mono text-xs text-ink-400">({{ $sponsor->referral_code }})</span></div>
+                    <div class="font-medium text-ink-100">{{ $sponsor->name }} <span class="font-mono text-xs text-ink-400">({{ $sponsor->referral_code }})</span></div>
                 </div>
             </div>
             <input type="hidden" name="sponsor_code" value="{{ $sponsor->referral_code }}">
@@ -31,7 +31,7 @@
         {{-- Step 1: package --}}
         <fieldset x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }} }">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">1</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">1</span>
                 Choose your amount
             </legend>
             <div class="grid gap-3 sm:grid-cols-2">
@@ -45,7 +45,7 @@
                                 <span class="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">Recommended</span>
                             @endif
                         </div>
-                        <div class="mt-2 font-display text-3xl font-semibold text-white">${{ number_format($value) }}</div>
+                        <div class="mt-2 font-display text-3xl font-semibold text-ink-100">${{ number_format($value) }}</div>
                         <p class="mt-1 text-xs text-ink-400">{{ $text }}</p>
                     </button>
                 @endforeach
@@ -68,7 +68,7 @@
         {{-- Step 2: details --}}
         <fieldset class="space-y-4">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">2</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">2</span>
                 Your details
             </legend>
 
@@ -93,16 +93,22 @@
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <x-input-label for="phone" value="Phone / WhatsApp" />
-                    <x-text-input id="phone" type="tel" name="phone" :value="old('phone')" required autocomplete="tel" placeholder="+92 300 0000000" />
+                    <x-input-label for="phone" value="Mobile / WhatsApp" />
+                    <x-text-input id="phone" type="tel" name="phone" :value="old('phone')" required autocomplete="tel" placeholder="0300 1234567" />
                     <x-input-error :messages="$errors->get('phone')" />
                 </div>
                 <div>
+                    <x-input-label for="cnic" value="CNIC number" />
+                    <x-text-input id="cnic" name="cnic" :value="old('cnic')" required inputmode="numeric" maxlength="15" placeholder="35202-1234567-1" class="font-mono" />
+                    <x-input-error :messages="$errors->get('cnic')" />
+                </div>
+                <div class="sm:col-span-2">
                     <x-input-label for="country" value="Country" />
                     <x-text-input id="country" name="country" :value="old('country')" required autocomplete="country-name" />
                     <x-input-error :messages="$errors->get('country')" />
                 </div>
             </div>
+            <p class="text-xs text-ink-400">Email, username, mobile number and CNIC must not already be registered.</p>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -120,7 +126,7 @@
         {{-- Step 3: payment --}}
         <fieldset class="space-y-4">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
-                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">3</span>
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-white">3</span>
                 Payment
             </legend>
             @if ($instructions)

@@ -49,6 +49,7 @@ class RegisteredUserController extends Controller
         ], [
             'sponsor_code.required' => 'A referral code is required. Ask the person who invited you for their link.',
             ...ProofRules::messages(),
+            ...MemberDetailsRules::messages(),
         ]);
 
         $sponsor = User::role(User::ROLE_MEMBER)->where('referral_code', $validated['sponsor_code'])->first();

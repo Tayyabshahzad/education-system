@@ -7,9 +7,12 @@
 
     {{-- Greeting + account state --}}
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <p class="text-sm text-ink-400">Welcome back,</p>
-            <h2 class="font-display text-2xl font-semibold text-white">{{ $user->name }}</h2>
+        <div class="flex items-center gap-4">
+            <a href="{{ route('profile.edit') }}" title="Change profile picture"><x-avatar :user="$user" size="h-14 w-14" /></a>
+            <div>
+                <p class="text-sm text-ink-400">Welcome back,</p>
+                <h2 class="font-display text-2xl font-semibold text-ink-100">{{ $user->name }}</h2>
+            </div>
         </div>
         <div class="flex items-center gap-2">
             <x-status-badge :status="$user->status" />
@@ -23,20 +26,20 @@
     @if ($user->status === 'pending' && ! $pendingPayment)
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gold/30 bg-gold/5 p-5">
             <div>
-                <p class="font-semibold text-white">Activate your account</p>
+                <p class="font-semibold text-ink-100">Activate your account</p>
                 <p class="mt-1 text-sm text-ink-400">Submit your joining payment of <span class="money text-gold">${{ number_format((float) $user->joining_amount, 2) }}</span> to unlock your training.</p>
             </div>
             <a href="{{ route('payments.index') }}" class="btn btn-primary"><x-icon name="upload" class="h-4 w-4" /> Submit payment</a>
         </div>
     @elseif ($pendingPayment)
         <div class="mb-6 flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 text-sm">
-            <x-icon name="clock" class="text-sky-300" />
-            <p class="text-ink-200">Your payment of <span class="money text-white">${{ number_format((float) $pendingPayment->amount, 2) }}</span> is awaiting review. We'll activate it as soon as it's verified.</p>
+            <x-icon name="clock" class="text-sky-700" />
+            <p class="text-ink-200">Your payment of <span class="money text-ink-100">${{ number_format((float) $pendingPayment->amount, 2) }}</span> is awaiting review. We'll activate it as soon as it's verified.</p>
         </div>
     @elseif (! $user->isFullyPaid())
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-ink-700 bg-ink-900 p-5">
             <div>
-                <p class="font-semibold text-white">Upgrade to the full package</p>
+                <p class="font-semibold text-ink-100">Upgrade to the full package</p>
                 <p class="mt-1 text-sm text-ink-400">Pay <span class="money text-gold">${{ number_format($fullFee - $paid, 2) }}</span> more to join live class batches and activate referral earnings for your sponsor.</p>
             </div>
             <a href="{{ route('payments.index') }}" class="btn btn-primary">Top up now</a>
@@ -68,7 +71,7 @@
                                 <span>Level {{ $level }}</span>
                                 <span class="money text-gold">${{ number_format($amount, 0) }} each</span>
                             </div>
-                            <div class="mt-2 font-display text-xl font-semibold text-white">{{ $levels[$level]->count() }} <span class="text-sm font-normal text-ink-400">members</span></div>
+                            <div class="mt-2 font-display text-xl font-semibold text-ink-100">{{ $levels[$level]->count() }} <span class="text-sm font-normal text-ink-400">members</span></div>
                             <div class="mt-1 text-xs text-bull-400">Earned <span class="money">${{ number_format((float) ($earningsByLevel[$level] ?? 0), 2) }}</span></div>
                         </div>
                     @endforeach
@@ -84,7 +87,7 @@
                 <div class="flex items-end justify-between">
                     <div>
                         <div class="text-xs text-ink-400">Paid so far</div>
-                        <div class="money mt-1 text-2xl font-semibold text-white">${{ number_format($paid, 2) }}</div>
+                        <div class="money mt-1 text-2xl font-semibold text-ink-100">${{ number_format($paid, 2) }}</div>
                     </div>
                     <div class="text-right text-xs text-ink-400">of <span class="money">${{ number_format($fullFee, 2) }}</span></div>
                 </div>
@@ -92,11 +95,11 @@
                     <div class="h-full rounded-full bg-gradient-to-r from-gold-600 to-gold-400" style="width: {{ $progress }}%"></div>
                 </div>
                 <div class="mt-5 space-y-3 text-sm">
-                    <div class="flex items-center justify-between"><span class="text-ink-400">Sponsor</span><span class="text-white">{{ $user->sponsor?->username ?? '—' }}</span></div>
-                    <div class="flex items-center justify-between"><span class="text-ink-400">Joined</span><span class="text-white">{{ $user->created_at->format('d M Y') }}</span></div>
+                    <div class="flex items-center justify-between"><span class="text-ink-400">Sponsor</span><span class="text-ink-100">{{ $user->sponsor?->username ?? '—' }}</span></div>
+                    <div class="flex items-center justify-between"><span class="text-ink-400">Joined</span><span class="text-ink-100">{{ $user->created_at->format('d M Y') }}</span></div>
                     <div class="flex items-center justify-between">
                         <span class="text-ink-400">Class batch</span>
-                        <span class="text-white">{{ $batches->pluck('name')->join(', ') ?: 'Not assigned yet' }}</span>
+                        <span class="text-ink-100">{{ $batches->pluck('name')->join(', ') ?: 'Not assigned yet' }}</span>
                     </div>
                 </div>
             </div>

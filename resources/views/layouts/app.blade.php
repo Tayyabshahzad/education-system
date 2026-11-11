@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#05080F">
+    <meta name="theme-color" content="#F4F6FA">
 
     <title>{{ $title ? $title.' · ' : '' }}{{ config('app.name') }}</title>
 
@@ -76,7 +76,7 @@
 
 <div x-data="{ nav: false }" class="min-h-full">
     {{-- Mobile backdrop --}}
-    <div x-cloak x-show="nav" x-transition.opacity class="fixed inset-0 z-30 bg-ink-950/80 backdrop-blur-sm lg:hidden" @click="nav = false"></div>
+    <div x-cloak x-show="nav" x-transition.opacity class="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" @click="nav = false"></div>
 
     {{-- ===== Sidebar ===== --}}
     <aside class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-ink-700 bg-ink-900 transition-transform lg:translate-x-0"
@@ -85,11 +85,11 @@
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5">
                 <x-application-logo class="h-9 w-9" />
                 <div class="leading-tight">
-                    <div class="font-display text-sm font-semibold text-white">Global Visioner</div>
+                    <div class="font-display text-sm font-semibold text-ink-100">Global Visioner</div>
                     <div class="text-[10px] font-medium uppercase tracking-[0.25em] text-gold">Education</div>
                 </div>
             </a>
-            <button type="button" class="text-ink-400 hover:text-white lg:hidden" @click="nav = false" aria-label="Close menu"><x-icon name="x" /></button>
+            <button type="button" class="text-ink-400 hover:text-ink-100 lg:hidden" @click="nav = false" aria-label="Close menu"><x-icon name="x" /></button>
         </div>
 
         <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5">
@@ -106,7 +106,7 @@
                                        @class([
                                            'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
                                            'bg-gold/10 text-gold' => $active,
-                                           'text-ink-400 hover:bg-ink-800 hover:text-white' => ! $active,
+                                           'text-ink-400 hover:bg-ink-800 hover:text-ink-100' => ! $active,
                                        ])
                                        @if ($active) aria-current="page" @endif>
                                         <x-icon :name="$icon" class="h-[18px] w-[18px]" />
@@ -122,14 +122,14 @@
 
         <div class="border-t border-ink-700 p-3">
             <div class="flex items-center gap-3 rounded-lg px-2 py-2">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{{ $authUser->initials() }}</span>
+                <x-avatar :user="$authUser" />
                 <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-medium text-white">{{ $authUser->name }}</div>
+                    <div class="truncate text-sm font-medium text-ink-100">{{ $authUser->name }}</div>
                     <div class="truncate text-xs text-ink-400">{{ $roleLabel }} · {{ $authUser->username }}</div>
                 </div>
             </div>
             <div class="mt-1 grid grid-cols-2 gap-1">
-                <a href="{{ route('profile.edit') }}" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-ink-400 hover:bg-ink-800 hover:text-white">
+                <a href="{{ route('profile.edit') }}" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-ink-400 hover:bg-ink-800 hover:text-ink-100">
                     <x-icon name="user" class="h-4 w-4" /> Profile
                 </a>
                 <form method="POST" action="{{ route('logout') }}">
@@ -145,19 +145,35 @@
     {{-- ===== Main ===== --}}
     <div class="lg:pl-64">
         <header class="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-ink-700 bg-ink-950/85 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <button type="button" class="text-ink-400 hover:text-white lg:hidden" @click="nav = true" aria-label="Open menu"><x-icon name="menu" class="h-6 w-6" /></button>
+            <button type="button" class="text-ink-400 hover:text-ink-100 lg:hidden" @click="nav = true" aria-label="Open menu"><x-icon name="menu" class="h-6 w-6" /></button>
             <div class="min-w-0 flex-1">
                 @if ($title)
-                    <h1 class="truncate font-display text-lg font-semibold text-white">{{ $title }}</h1>
+                    <h1 class="truncate font-display text-lg font-semibold text-ink-100">{{ $title }}</h1>
                 @endif
             </div>
             @isset($actions)
                 <div class="flex shrink-0 items-center gap-2">{{ $actions }}</div>
             @endisset
             @if ($isMember)
-                <a href="{{ route('wallet.index') }}" class="hidden items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-1.5 text-sm sm:flex">
+                {{-- Referral link copy button, visible on every member page (icon-only on phones) --}}
+                <div x-data="{ copied: false }" class="shrink-0">
+                    <input x-ref="ref" type="text" readonly value="{{ $authUser->referralLink() }}" class="sr-only" tabindex="-1" aria-hidden="true">
+                    <button type="button" title="{{ $authUser->referralLink() }}"
+                            class="flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm font-semibold text-gold transition hover:bg-gold/15"
+                            @click="
+                                const v = $refs.ref.value;
+                                (window.isSecureContext && navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
+                                    .catch(() => { $refs.ref.classList.remove('sr-only'); $refs.ref.select(); document.execCommand('copy'); $refs.ref.classList.add('sr-only'); });
+                                copied = true; setTimeout(() => copied = false, 1800)">
+                        <x-icon x-show="!copied" name="link" class="h-4 w-4" />
+                        <x-icon x-show="copied" x-cloak name="check" class="h-4 w-4" />
+                        <span class="hidden sm:inline" x-text="copied ? 'Link copied!' : 'Copy referral link'">Copy referral link</span>
+                        <span class="sm:hidden" x-show="copied" x-cloak>Copied</span>
+                    </button>
+                </div>
+                <a href="{{ route('wallet.index') }}" class="hidden items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-1.5 text-sm md:flex">
                     <x-icon name="wallet" class="h-4 w-4 text-gold" />
-                    <span class="money text-white">${{ number_format((float) $authUser->wallet_balance, 2) }}</span>
+                    <span class="money text-ink-100">${{ number_format((float) $authUser->wallet_balance, 2) }}</span>
                 </a>
             @endif
         </header>

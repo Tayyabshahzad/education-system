@@ -9,7 +9,7 @@
             @foreach ($levels as $level => $members)
                 <button type="button" role="tab" @click="tab = {{ $level }}" :aria-selected="tab === {{ $level }}"
                         class="flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition"
-                        :class="tab === {{ $level }} ? 'border-gold/40 bg-gold/10 text-gold' : 'border-ink-700 bg-ink-900 text-ink-400 hover:text-white'">
+                        :class="tab === {{ $level }} ? 'border-gold/40 bg-gold/10 text-gold' : 'border-ink-700 bg-ink-900 text-ink-400 hover:text-ink-100'">
                     Level {{ $level }}
                     <span class="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-ink-200">{{ $members->count() }}</span>
                     <span class="money text-xs opacity-70">${{ number_format($commissionLevels[$level] ?? 0, 0) }}</span>
@@ -32,8 +32,13 @@
                                 @foreach ($members as $m)
                                     <tr>
                                         <td>
-                                            <div class="font-medium text-white">{{ $m->name }}</div>
-                                            <div class="text-xs text-ink-400">{{ $m->username }}</div>
+                                            <div class="flex items-center gap-3">
+                                                <x-avatar :user="$m" />
+                                                <div>
+                                                    <div class="font-medium text-ink-100">{{ $m->name }}</div>
+                                                    <div class="text-xs text-ink-400">{{ $m->username }}</div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="text-ink-400">{{ $m->sponsor?->username }}</td>
                                         <td class="money">${{ number_format((float) $m->paid_amount, 2) }}</td>

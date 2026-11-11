@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Batch;
 use App\Models\User;
+use App\Models\Withdrawal;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -56,6 +57,8 @@ class PageSmokeTest extends TestCase
             route('admin.genealogy', $member),
             route('admin.payments.index', ['status' => 'all']),
             route('admin.withdrawals.index'),
+            route('admin.withdrawals.index', ['status' => 'all']),
+            route('admin.withdrawals.show', Withdrawal::first()),
             route('admin.batches.index'),
             route('admin.batches.create'),
             route('admin.batches.show', $batch),

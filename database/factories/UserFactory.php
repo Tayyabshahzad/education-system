@@ -27,7 +27,8 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'username' => str_replace('.', '_', fake()->unique()->userName()),
-            'phone' => fake()->numerify('+92300#######'),
+            'phone' => fake()->unique()->numerify('+92300#######'),
+            'cnic' => fake()->unique()->numerify('#####-#######-#'),
             'country' => 'Pakistan',
             'joining_amount' => 200,
             'email' => fake()->unique()->safeEmail(),

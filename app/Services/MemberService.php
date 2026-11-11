@@ -24,6 +24,7 @@ class MemberService
                 'username' => $data['username'],
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
+                'cnic' => $data['cnic'] ?? null,
                 'country' => $data['country'] ?? null,
                 'password' => $data['password'],
                 'joining_amount' => $data['joining_amount'] ?? 0,
@@ -64,6 +65,8 @@ class MemberService
             $member->forceFill([
                 'email' => $member->email.$suffix,
                 'username' => $member->username.$suffix,
+                'cnic' => $member->cnic ? $member->cnic.$suffix : null,
+                'phone' => $member->phone ? $member->phone.$suffix : null,
             ])->save();
 
             $member->delete();

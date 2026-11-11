@@ -19,7 +19,7 @@
                         <label class="cursor-pointer">
                             <input type="radio" name="role" value="{{ $key }}" x-model="role" class="peer sr-only">
                             <span class="block h-full rounded-xl border border-ink-700 bg-ink-800/60 p-4 transition peer-checked:border-gold peer-checked:bg-gold/5 peer-focus-visible:ring-2 peer-focus-visible:ring-gold/50">
-                                <span class="block font-medium text-white">{{ $label }}</span>
+                                <span class="block font-medium text-ink-100">{{ $label }}</span>
                                 <span class="mt-1 block text-xs text-ink-400">{{ $roleHelp[$key] }}</span>
                             </span>
                         </label>
@@ -67,7 +67,11 @@
                             <x-text-input id="country" name="country" :value="old('country')" x-bind:required="role === 'member'" />
                             <x-input-error :messages="$errors->get('country')" />
                         </div>
-                        <div x-show="role === 'member'" class="hidden sm:block"></div>
+                        <div x-show="role === 'member'">
+                            <x-input-label for="cnic" value="CNIC number" />
+                            <x-text-input id="cnic" name="cnic" :value="old('cnic')" x-bind:required="role === 'member'" inputmode="numeric" maxlength="15" placeholder="35202-1234567-1" class="font-mono" />
+                            <x-input-error :messages="$errors->get('cnic')" />
+                        </div>
                         <div>
                             <x-input-label for="password" value="Password" />
                             <x-text-input id="password" type="password" name="password" required autocomplete="new-password" />
@@ -97,7 +101,7 @@
                                     <label class="flex items-start gap-3 text-sm">
                                         <input type="checkbox" name="mark_paid" value="1" @checked(old('mark_paid')) class="mt-0.5 rounded border-ink-600 bg-ink-800 text-gold focus:ring-gold/40 focus:ring-offset-ink-950">
                                         <span>
-                                            <span class="font-medium text-white">Payment already received</span>
+                                            <span class="font-medium text-ink-100">Payment already received</span>
                                             <span class="block text-xs text-ink-400">Records the amount as approved and activates the account. If unticked, the member logs in and uploads their payment screenshot.</span>
                                         </span>
                                     </label>
@@ -130,7 +134,7 @@
 
                 <template x-if="role === 'teacher' || role === 'super-admin'">
                     <div class="card card-body text-sm text-ink-400">
-                        <span x-show="role === 'teacher'">After creating the teacher, assign them to a batch from <span class="text-white">Academy → Batches</span>.</span>
+                        <span x-show="role === 'teacher'">After creating the teacher, assign them to a batch from <span class="text-ink-100">Academy → Batches</span>.</span>
                         <span x-show="role === 'super-admin'" class="text-bear-400">Super admins can change fees, staff access and every record. Only create one for people you fully trust.</span>
                     </div>
                 </template>

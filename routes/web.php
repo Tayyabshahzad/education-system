@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Member;
 use App\Http\Controllers\ProfileController;
@@ -15,6 +16,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/payout', [ProfileController::class, 'updatePayout'])->name('profile.payout');
+    Route::post('/profile/avatar', [AvatarController::class, 'update'])->name('profile.avatar');
+    Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
+    Route::get('/avatars/{user}', [AvatarController::class, 'show'])->name('avatars.show');
 
     // Payment proof files (owner or payment staff; checked in the controller).
     Route::get('/payments/{payment}/proof', [Member\PaymentController::class, 'proof'])->name('payments.proof');
@@ -64,7 +69,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/payments/{payment}/reject', [Admin\PaymentController::class, 'reject'])->name('payments.reject');
         });
 
-        Route::middleware('can:withdrawals.view')->get('/withdrawals', [Admin\WithdrawalController::class, 'index'])->name('withdrawals.index');
+        Route::middleware('can:withdrawals.view')->group(function () {
+            Route::get('/withdrawals', [Admin\WithdrawalController::class, 'index'])->name('withdrawals.index');
+            Route::get('/withdrawals/{withdrawal}', [Admin\WithdrawalController::class, 'show'])->name('withdrawals.show');
+        });
         Route::middleware('can:withdrawals.review')->group(function () {
             Route::post('/withdrawals/{withdrawal}/approve', [Admin\WithdrawalController::class, 'approve'])->name('withdrawals.approve');
             Route::post('/withdrawals/{withdrawal}/reject', [Admin\WithdrawalController::class, 'reject'])->name('withdrawals.reject');

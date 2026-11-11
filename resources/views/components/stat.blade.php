@@ -1,7 +1,7 @@
 @props(['label', 'value', 'hint' => null, 'tone' => 'default', 'icon' => null])
 @php
     $tones = [
-        'default' => 'text-white',
+        'default' => 'text-ink-100',
         'gold' => 'text-gold',
         'green' => 'text-bull-400',
         'red' => 'text-bear-400',

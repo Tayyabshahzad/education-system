@@ -10,7 +10,7 @@
         <button type="button" @click="amount = {{ $pick }}"
                 class="rounded-lg border px-3 py-2.5 text-left transition"
                 :class="Number(amount) === {{ $pick }} ? 'border-gold bg-gold/10' : 'border-ink-700 bg-ink-800/60 hover:border-ink-600'">
-            <span class="money block text-base font-semibold text-white">${{ number_format($pick, 0) }}</span>
+            <span class="money block text-base font-semibold text-ink-100">${{ number_format($pick, 0) }}</span>
             <span class="block text-[11px] text-ink-400">{{ $pick == $fullFee ? 'Full package' : ($pick == $minFee ? 'Joining fee' : 'Maximum') }}</span>
         </button>
     @endforeach

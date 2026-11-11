@@ -24,7 +24,7 @@
                     <label class="flex items-start gap-3">
                         <input type="checkbox" name="pay_from_wallet" value="1" x-model="payNow" class="mt-0.5 rounded border-ink-600 bg-ink-800 text-gold focus:ring-gold/40 focus:ring-offset-ink-950">
                         <span>
-                            <span class="font-medium text-white">Pay now from my wallet</span>
+                            <span class="font-medium text-ink-100">Pay now from my wallet</span>
                             <span class="block text-xs text-ink-400">Balance: <span class="money text-gold">${{ number_format($wallet, 2) }}</span>. The account is activated immediately.</span>
                         </span>
                     </label>

@@ -1,6 +1,6 @@
 <x-guest-layout title="Sign in">
     <div class="mb-8">
-        <h2 class="font-display text-3xl font-semibold text-white">Welcome back</h2>
+        <h2 class="font-display text-3xl font-semibold text-ink-100">Welcome back</h2>
         <p class="mt-2 text-sm text-ink-400">Sign in to continue your forex training.</p>
     </div>
 

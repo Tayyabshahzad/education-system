@@ -69,7 +69,7 @@ class TeamController extends Controller
             ...MemberDetailsRules::rules(),
             'pay_from_wallet' => ['boolean'],
             ...($payNow ? [] : ProofRules::required()),
-        ], ProofRules::messages());
+        ], [...ProofRules::messages(), ...MemberDetailsRules::messages()]);
 
         if ($payNow && (float) $sponsor->wallet_balance < (float) $validated['joining_amount']) {
             return back()->withInput()->withErrors(['pay_from_wallet' => 'Your wallet balance is not enough to pay this fee.']);

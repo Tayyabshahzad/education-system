@@ -26,7 +26,7 @@
                                 @foreach ($payments as $p)
                                     <tr>
                                         <td class="text-ink-400">{{ $p->created_at->format('d M Y, H:i') }}</td>
-                                        <td class="money text-white">${{ number_format((float) $p->amount, 2) }}</td>
+                                        <td class="money text-ink-100">${{ number_format((float) $p->amount, 2) }}</td>
                                         <td>{{ $p->methodLabel() }}</td>
                                         <td><x-status-badge :status="$p->status" /></td>
                                         <td class="max-w-xs truncate text-ink-400">{{ $p->note ?: '—' }}</td>
@@ -59,11 +59,11 @@
                         <div>
                             <x-input-label value="Pay with" />
                             <div class="grid grid-cols-2 gap-2">
-                                <label class="cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition" :class="method === 'proof' ? 'border-gold bg-gold/10 text-white' : 'border-ink-700 bg-ink-800/60 text-ink-400'">
+                                <label class="cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition" :class="method === 'proof' ? 'border-gold bg-gold/10 text-ink-100' : 'border-ink-700 bg-ink-800/60 text-ink-400'">
                                     <input type="radio" name="method" value="proof" x-model="method" class="sr-only">
                                     <span class="flex items-center gap-2 font-medium"><x-icon name="upload" class="h-4 w-4" /> Upload proof</span>
                                 </label>
-                                <label class="cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition" :class="method === 'wallet' ? 'border-gold bg-gold/10 text-white' : 'border-ink-700 bg-ink-800/60 text-ink-400'">
+                                <label class="cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition" :class="method === 'wallet' ? 'border-gold bg-gold/10 text-ink-100' : 'border-ink-700 bg-ink-800/60 text-ink-400'">
                                     <input type="radio" name="method" value="wallet" x-model="method" class="sr-only" @disabled($wallet < $minimum)>
                                     <span class="flex items-center gap-2 font-medium"><x-icon name="wallet" class="h-4 w-4" /> Wallet</span>
                                     <span class="money mt-0.5 block text-xs text-ink-400">${{ number_format($wallet, 2) }}</span>

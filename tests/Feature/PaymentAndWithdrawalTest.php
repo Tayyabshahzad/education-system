@@ -118,13 +118,13 @@ class PaymentAndWithdrawalTest extends TestCase
         $member->forceFill(['status' => 'active', 'wallet_balance' => 60])->save();
 
         $this->actingAs($member)->post(route('withdrawals.store'), [
-            'amount' => 50, 'method' => 'Easypaisa', 'account_details' => '0300',
+            'amount' => 50, 'method' => 'Easypaisa', 'account_title' => 'Me', 'account_number' => '03001112223',
         ])->assertSessionHasNoErrors();
         $this->assertEquals(10, $member->fresh()->wallet_balance);
 
         // Cannot request more than the remaining balance.
         $this->actingAs($member)->post(route('withdrawals.store'), [
-            'amount' => 20, 'method' => 'Easypaisa', 'account_details' => '0300',
+            'amount' => 20, 'method' => 'Easypaisa', 'account_title' => 'Me', 'account_number' => '03001112223',
         ])->assertSessionHasErrors('amount');
 
         $staff = $this->staff(['withdrawals.view', 'withdrawals.review']);
@@ -138,7 +138,7 @@ class PaymentAndWithdrawalTest extends TestCase
     {
         $member = $this->member();
         $member->forceFill(['status' => 'active', 'wallet_balance' => 30])->save();
-        $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 30, 'method' => 'Bank Transfer', 'account_details' => 'IBAN']);
+        $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 30, 'method' => 'Bank Transfer', 'account_title' => 'Me', 'account_number' => 'PK36MEZN0001']);
 
         $this->actingAs($this->superAdmin())->post(route('admin.withdrawals.approve', Withdrawal::sole()), ['note' => 'REF9']);
 
@@ -151,7 +151,7 @@ class PaymentAndWithdrawalTest extends TestCase
         $member = $this->member();
         $member->forceFill(['wallet_balance' => 100])->save();
 
-        $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 5, 'method' => 'Easypaisa', 'account_details' => 'x'])
+        $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 5, 'method' => 'Easypaisa', 'account_title' => 'Me', 'account_number' => '0300'])
             ->assertSessionHasErrors('amount');
     }
 }

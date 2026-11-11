@@ -13,16 +13,20 @@
                             <tr x-data="{ rejecting: false }">
                                 <td class="text-ink-400">{{ $p->created_at->format('d M Y, H:i') }}</td>
                                 <td>
-                                    <a href="{{ route('admin.members.show', $p->user_id) }}" class="font-medium text-white hover:text-gold">{{ $p->user->name }}</a>
-                                    <div class="text-xs text-ink-400">{{ $p->user->username }} · paid ${{ number_format((float) $p->user->paid_amount, 2) }}</div>
+                                    <a href="{{ route('admin.members.show', $p->user_id) }}" class="font-medium text-ink-100 hover:text-gold">{{ $p->user->name }}</a>
+                                    <div class="text-xs text-ink-400">{{ $p->user->username }} · <span class="font-mono">{{ $p->user->cnic ?: 'no CNIC' }}</span> · paid ${{ number_format((float) $p->user->paid_amount, 2) }}</div>
                                 </td>
-                                <td class="money text-white">${{ number_format((float) $p->amount, 2) }}</td>
+                                <td class="money text-ink-100">${{ number_format((float) $p->amount, 2) }}</td>
                                 <td>
                                     {{ $p->methodLabel() }}
                                     @if ($p->payer && $p->paid_by !== $p->user_id)<div class="text-xs text-ink-400">by {{ $p->payer->username }}</div>@endif
                                 </td>
                                 <td>
-                                    @if ($p->proof_path)<a href="{{ route('payments.proof', $p) }}" target="_blank" class="link text-xs">View proof</a>@endif
+                                    @if ($p->proof_path)
+                                        <a href="{{ route('payments.proof', $p) }}" target="_blank" title="Open full size" class="group block w-14">
+                                            <img src="{{ route('payments.proof', $p) }}" alt="Payment proof" loading="lazy" class="h-14 w-14 rounded-lg object-cover object-top ring-1 ring-ink-700 transition group-hover:ring-gold">
+                                        </a>
+                                    @endif
                                     @if ($p->reference)<div class="font-mono text-xs text-ink-400">{{ $p->reference }}</div>@endif
                                 </td>
                                 <td>

@@ -6,7 +6,7 @@
             @foreach ($batches as $b)
                 <a href="{{ route('teacher.batches.show', $b) }}" class="card block p-5 transition hover:border-gold/40">
                     <div class="flex items-start justify-between gap-3">
-                        <h3 class="font-display text-lg font-semibold text-white">{{ $b->name }}</h3>
+                        <h3 class="font-display text-lg font-semibold text-ink-100">{{ $b->name }}</h3>
                         <x-status-badge :status="$b->status" />
                     </div>
                     <div class="mt-4 space-y-2 text-sm text-ink-200">

@@ -14,7 +14,7 @@
                             @foreach ($withdrawals as $w)
                                 <tr>
                                     <td class="text-ink-400">{{ $w->created_at->format('d M Y, H:i') }}</td>
-                                    <td class="money text-white">${{ number_format((float) $w->amount, 2) }}</td>
+                                    <td class="money text-ink-100">${{ number_format((float) $w->amount, 2) }}</td>
                                     <td>{{ $w->method }}</td>
                                     <td><x-status-badge :status="$w->status" /></td>
                                     <td class="max-w-xs truncate text-ink-400">{{ $w->note ?: '—' }}</td>
@@ -36,7 +36,7 @@
                 </div>
 
                 @if ($balance < $minWithdrawal)
-                    <p class="text-sm text-ink-400">The minimum withdrawal is <span class="money text-white">${{ number_format($minWithdrawal, 2) }}</span>. Keep building your team to unlock payouts.</p>
+                    <p class="text-sm text-ink-400">The minimum withdrawal is <span class="money text-ink-100">${{ number_format($minWithdrawal, 2) }}</span>. Keep building your team to unlock payouts.</p>
                 @else
                     <form method="POST" action="{{ route('withdrawals.store') }}" class="space-y-4" x-data="{ amount: {{ (float) old('amount', $balance) }} }">
                         @csrf
@@ -48,19 +48,23 @@
                             </div>
                             <x-input-error :messages="$errors->get('amount')" />
                         </div>
-                        <div>
-                            <x-input-label for="method" value="Payout method" />
-                            <select id="method" name="method" class="field-select" required>
-                                @foreach ($methods as $m)
-                                    <option value="{{ $m }}" @selected(old('method') === $m)>{{ $m }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('method')" />
-                        </div>
-                        <div>
-                            <x-input-label for="account_details" value="Account details" />
-                            <textarea id="account_details" name="account_details" rows="3" class="field-textarea" required placeholder="Account title, number / wallet address">{{ old('account_details') }}</textarea>
-                            <x-input-error :messages="$errors->get('account_details')" />
+                        <div class="space-y-4 rounded-xl border border-ink-700 bg-ink-800/40 p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-ink-400">Send to</span>
+                                @if ($user->hasPayoutDetails())
+                                    <span class="badge badge-green">Saved details</span>
+                                @endif
+                            </div>
+                            @include('partials.payout-fields', ['source' => $user])
+                            <div>
+                                <x-input-label for="account_details" value="Note for admin (optional)" />
+                                <x-text-input id="account_details" name="account_details" :value="old('account_details')" placeholder="e.g. branch code" />
+                            </div>
+                            <label class="flex items-center gap-2 text-xs text-ink-400">
+                                <input type="hidden" name="save_details" value="0">
+                                <input type="checkbox" name="save_details" value="1" checked class="rounded border-ink-600 bg-ink-800 text-gold focus:ring-gold/40">
+                                Save these details for next time
+                            </label>
                         </div>
                         <button class="btn btn-primary w-full">Submit request</button>
                     </form>

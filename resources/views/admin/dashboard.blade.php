@@ -24,8 +24,8 @@
                             <tbody>
                                 @foreach ($pendingPayments as $p)
                                     <tr>
-                                        <td><div class="font-medium text-white">{{ $p->user->name }}</div><div class="text-xs text-ink-400">{{ $p->user->username }}</div></td>
-                                        <td class="money text-white">${{ number_format((float) $p->amount, 2) }}</td>
+                                        <td><div class="font-medium text-ink-100">{{ $p->user->name }}</div><div class="text-xs text-ink-400">{{ $p->user->username }}</div></td>
+                                        <td class="money text-ink-100">${{ number_format((float) $p->amount, 2) }}</td>
                                         <td class="text-right text-ink-400">{{ $p->created_at->diffForHumans() }}</td>
                                     </tr>
                                 @endforeach
@@ -50,8 +50,8 @@
                             <tbody>
                                 @foreach ($pendingWithdrawals as $w)
                                     <tr>
-                                        <td><div class="font-medium text-white">{{ $w->user->name }}</div><div class="text-xs text-ink-400">{{ $w->method }}</div></td>
-                                        <td class="money text-white">${{ number_format((float) $w->amount, 2) }}</td>
+                                        <td><a href="{{ route('admin.withdrawals.show', $w) }}" class="font-medium text-ink-100 hover:text-gold">{{ $w->user->name }}</a><div class="text-xs text-ink-400">{{ $w->method }}</div></td>
+                                        <td class="money text-ink-100">${{ number_format((float) $w->amount, 2) }}</td>
                                         <td class="text-right text-ink-400">{{ $w->created_at->diffForHumans() }}</td>
                                     </tr>
                                 @endforeach
@@ -80,7 +80,7 @@
                     <tbody>
                         @forelse ($latestMembers as $m)
                             <tr>
-                                <td><a href="{{ route('admin.members.show', $m) }}" class="font-medium text-white hover:text-gold">{{ $m->name }}</a><div class="text-xs text-ink-400">{{ $m->username }}</div></td>
+                                <td><a href="{{ route('admin.members.show', $m) }}" class="font-medium text-ink-100 hover:text-gold">{{ $m->name }}</a><div class="text-xs text-ink-400">{{ $m->username }}</div></td>
                                 <td class="text-ink-400">{{ $m->sponsor?->username ?? '—' }}</td>
                                 <td class="money">${{ number_format((float) $m->paid_amount, 2) }}</td>
                                 <td><x-status-badge :status="$m->status" /></td>

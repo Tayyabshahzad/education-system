@@ -63,11 +63,11 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:4', 'max:30', 'alpha_dash', Rule::unique('users')],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users')],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', Rule::unique('users')],
             'password' => ['required', 'confirmed', Password::defaults()],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => [Rule::in(Permissions::all())],
-        ]);
+        ], MemberDetailsRules::messages());
 
         $user = $accounts->create($data, $role, $request->user(), $data['permissions'] ?? []);
 
@@ -88,6 +88,7 @@ class UserController extends Controller
             'mark_paid' => ['boolean'],
         ], [
             'sponsor.required' => 'Every member must be placed under a sponsor. Enter the sponsor\'s username or referral code.',
+            ...MemberDetailsRules::messages(),
         ]);
 
         $sponsor = $this->resolveSponsor($validated['sponsor'] ?? null);

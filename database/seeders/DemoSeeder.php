@@ -30,9 +30,16 @@ class DemoSeeder extends Seeder
 
         $teacher = $this->staffUser('Usman Mentor', 'teacher', 'teacher@gve.test', User::ROLE_TEACHER);
 
-        $member1 = $members->create($this->details('Member One', 'member1', 200), null, $admin, 'received', 200);
-        $member2 = $members->create($this->details('Member Two', 'member2', 200), $member1, $admin, 'received', 200);
-        $member3 = $members->create($this->details('Member Three', 'member3', 25), $member2, $admin, 'received', 25);
+        $member1 = $members->create($this->details('Member One', 'member1', 200, 1), null, $admin, 'received', 200);
+        $member2 = $members->create($this->details('Member Two', 'member2', 200, 2), $member1, $admin, 'received', 200);
+        $member3 = $members->create($this->details('Member Three', 'member3', 25, 3), $member2, $admin, 'received', 25);
+
+        $member1->update([
+            'payout_method' => 'Easypaisa',
+            'bank_name' => 'Easypaisa',
+            'account_title' => 'Member One',
+            'account_number' => '03001000001',
+        ]);
 
         $batch = Batch::create([
             'name' => 'Forex Foundations — Batch 01',
@@ -48,7 +55,12 @@ class DemoSeeder extends Seeder
         $batch->members()->attach([$member1->id => ['assigned_by' => $admin->id], $member2->id => ['assigned_by' => $admin->id]]);
 
         // A pending withdrawal so the admin queue has something to review.
-        $withdrawals->request($member1->fresh(), 10, 'Easypaisa', "Member One\n03001234567");
+        $withdrawals->request($member1->fresh(), 10, [
+            'method' => 'Easypaisa',
+            'bank_name' => 'Easypaisa',
+            'account_title' => 'Member One',
+            'account_number' => '03001000001',
+        ]);
     }
 
     private function staffUser(string $name, string $username, string $email, string $role): User
@@ -66,13 +78,14 @@ class DemoSeeder extends Seeder
         return $user;
     }
 
-    private function details(string $name, string $username, float $amount): array
+    private function details(string $name, string $username, float $amount, int $n): array
     {
         return [
             'name' => $name,
             'username' => $username,
             'email' => $username.'@gve.test',
-            'phone' => '+92300'.random_int(1000000, 9999999),
+            'phone' => '+92300100000'.$n,
+            'cnic' => '35202-123456'.$n.'-'.$n,
             'country' => 'Pakistan',
             'password' => 'password',
             'joining_amount' => $amount,

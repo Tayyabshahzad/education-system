@@ -16,7 +16,7 @@ class PaymentController extends Controller
         $status = $request->query('status', 'pending');
 
         return view('admin.payments', [
-            'payments' => Payment::with(['user:id,name,username,paid_amount', 'payer:id,username', 'reviewer:id,name'])
+            'payments' => Payment::with(['user:id,name,username,phone,cnic,paid_amount,avatar_path', 'payer:id,username', 'reviewer:id,name'])
                 ->when($status !== 'all', fn ($q) => $q->where('status', $status))
                 ->latest()
                 ->paginate(20)

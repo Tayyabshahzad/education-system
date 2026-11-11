@@ -14,7 +14,7 @@
             <div class="flex flex-wrap gap-1.5">
                 @foreach (['' => 'All', 'commission' => 'Commission', 'withdrawal' => 'Withdrawals', 'withdrawal_refund' => 'Refunds', 'payment' => 'Fee payments'] as $key => $label)
                     <a href="{{ route('wallet.index', array_filter(['type' => $key])) }}"
-                       @class(['rounded-md px-2.5 py-1 text-xs font-medium', 'bg-gold/15 text-gold' => $type === $key || (! $type && $key === ''), 'text-ink-400 hover:text-white' => ! ($type === $key || (! $type && $key === ''))])>{{ $label }}</a>
+                       @class(['rounded-md px-2.5 py-1 text-xs font-medium', 'bg-gold/15 text-gold' => $type === $key || (! $type && $key === ''), 'text-ink-400 hover:text-ink-100' => ! ($type === $key || (! $type && $key === ''))])>{{ $label }}</a>
                 @endforeach
             </div>
         </div>

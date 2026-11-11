@@ -16,10 +16,16 @@ class CommissionService
 {
     public function __construct(private WalletService $wallet) {}
 
-    /** Must be called inside a transaction with $member locked. */
+    /**
+     * Pays uplines once the member is BOTH active (payment approved / account activated)
+     * AND has paid the full fee. Called after every approved payment and whenever an admin
+     * activates a member, so a member blocked at approval time releases commission later.
+     *
+     * Must be called inside a transaction with $member locked.
+     */
     public function releaseIfQualified(User $member, ?Model $source = null): bool
     {
-        if ($member->commission_released_at !== null || ! $member->isFullyPaid()) {
+        if ($member->commission_released_at !== null || $member->status !== 'active' || ! $member->isFullyPaid()) {
             return false;
         }
 

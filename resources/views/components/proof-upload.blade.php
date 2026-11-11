@@ -11,7 +11,7 @@
         <template x-if="!preview">
             <span class="flex flex-col items-center gap-2">
                 <x-icon name="upload" class="h-6 w-6 text-gold" />
-                <span class="text-sm font-medium text-white">Tap to attach screenshot</span>
+                <span class="text-sm font-medium text-ink-100">Tap to attach screenshot</span>
                 <span class="text-xs text-ink-400">JPG, PNG or WEBP · it is compressed automatically</span>
             </span>
         </template>
@@ -19,7 +19,7 @@
             <span class="flex w-full items-center gap-3 text-left">
                 <img :src="preview" alt="Payment screenshot preview" class="h-16 w-16 rounded-lg object-cover ring-1 ring-ink-600">
                 <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-medium text-white" x-text="name"></span>
+                    <span class="block truncate text-sm font-medium text-ink-100" x-text="name"></span>
                     <span class="block text-xs text-ink-400" x-text="info"></span>
                     <span class="mt-0.5 block text-xs text-gold">Tap to change</span>
                 </span>

@@ -43,7 +43,7 @@
                     <input type="checkbox" name="upline_must_be_full" value="1" @checked(old('upline_must_be_full', filter_var($s['upline_must_be_full'], FILTER_VALIDATE_BOOLEAN)))
                            class="mt-0.5 rounded border-ink-600 bg-ink-800 text-gold focus:ring-gold/40 focus:ring-offset-ink-950">
                     <span>
-                        <span class="font-medium text-white">Upline must be on the full package to earn</span>
+                        <span class="font-medium text-ink-100">Upline must be on the full package to earn</span>
                         <span class="block text-xs text-ink-400">When off, any active upline earns. When on, uplines who paid less than the full fee are skipped for that level.</span>
                     </span>
                 </label>
