@@ -68,7 +68,7 @@
         </div>
 
         <div class="relative z-10 flex min-h-0 flex-1 flex-col justify-between gap-8 overflow-y-auto px-12 py-10 xl:px-16">
-            <a href="/" class="flex items-center gap-3">
+            <a href="{{ url('/') }}" class="flex items-center gap-3">
                 <x-application-logo class="h-11 w-11" />
                 <div class="leading-tight">
                     <div class="font-display text-lg font-semibold text-ink-100">Global Visioner</div>
@@ -131,7 +131,7 @@
         <div class="absolute inset-0 grid-bg opacity-60 lg:hidden"></div>
 
         <header class="relative z-10 flex items-center px-6 py-5 lg:hidden">
-            <a href="/" class="flex items-center gap-2.5">
+            <a href="{{ url('/') }}" class="flex items-center gap-2.5">
                 <x-application-logo class="h-9 w-9" />
                 <span class="font-display font-semibold text-ink-100">Global Visioner <span class="text-gold">Education</span></span>
             </a>

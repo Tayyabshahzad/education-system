@@ -14,12 +14,15 @@ use Illuminate\Validation\ValidationException;
  */
 class UploadReader
 {
-    /** 50 megapixels covers every phone camera; anything bigger is refused before decoding. */
-    public const MAX_PIXELS = 50_000_000;
+    /**
+     * 30 megapixels covers normal phone photos (12–24 MP) while keeping decode memory
+     * near 120 MB on a small (1 GB RAM) server. Anything bigger is refused before decoding.
+     */
+    public const MAX_PIXELS = 30_000_000;
 
     public const MAX_SIDE = 12_000;
 
-    private const MEMORY_NEEDED = 512 * 1024 * 1024;
+    private const MEMORY_NEEDED = 256 * 1024 * 1024;
 
     /** "128M" -> bytes; -1 (unlimited) counts as enough. */
     private static function bytes(string $limit): int
@@ -58,7 +61,7 @@ class UploadReader
 
         // Decoding a large phone photo needs ~4 bytes per pixel; raise a low memory limit for this request.
         if (self::bytes((string) ini_get('memory_limit')) < self::MEMORY_NEEDED) {
-            @ini_set('memory_limit', '512M');
+            @ini_set('memory_limit', '256M');
         }
 
         $image = @imagecreatefromstring($bytes);

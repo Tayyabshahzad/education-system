@@ -230,4 +230,19 @@ class IdentityProfileWithdrawalTest extends TestCase
             }
         }
     }
+
+    public function test_console_command_creates_the_first_super_admin(): void
+    {
+        $this->artisan('app:create-super-admin', ['--name' => 'Owner Person', '--email' => 'Owner@Example.com', '--password' => 'secret-pass-1'])
+            ->assertExitCode(0);
+
+        $owner = User::firstWhere('email', 'owner@example.com');
+        $this->assertTrue($owner->isSuperAdmin());
+        $this->assertSame('active', $owner->status);
+        $this->assertNotEmpty($owner->referral_code);
+
+        // Same email twice is refused.
+        $this->artisan('app:create-super-admin', ['--name' => 'X', '--email' => 'owner@example.com', '--password' => 'secret-pass-1'])
+            ->assertExitCode(1);
+    }
 }

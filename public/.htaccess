@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Work out the URL folder this app is served from ("/" locally, "/education-system/"
+    # behind an Apache Alias on the live server) so the rules below need no RewriteBase.
+    RewriteCond %{REQUEST_URI}::$1 ^(.*?/)(.*)::\2$
+    RewriteRule ^(.*)$ - [E=APP_BASE:%1]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -21,5 +26,5 @@
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
+    RewriteRule ^ %{ENV:APP_BASE}index.php [L]
 </IfModule>
