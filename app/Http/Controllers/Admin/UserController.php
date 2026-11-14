@@ -36,7 +36,7 @@ class UserController extends Controller
         abort_if($roles === [], 403);
 
         $role = in_array($request->query('role'), $roles, true) ? $request->query('role') : $roles[0];
-        $sponsor = $request->query('sponsor') ? User::role(User::ROLE_MEMBER)->find($request->query('sponsor')) : null;
+        $sponsor = $request->query('sponsor') ? User::find($request->query('sponsor')) : null;
 
         return view('admin.users.create', [
             'roles' => array_intersect_key(self::ROLE_LABELS, array_flip($roles)),
@@ -68,7 +68,10 @@ class UserController extends Controller
             'permissions.*' => [Rule::in(Permissions::all())],
         ], MemberDetailsRules::messages());
 
-        $user = $accounts->create($data, $role, $request->user(), $data['permissions'] ?? []);
+        // Only a super admin defines permissions. Staff created by anyone else start with none
+        // until a super admin grants them.
+        $permissions = $request->user()->isSuperAdmin() ? ($data['permissions'] ?? []) : [];
+        $user = $accounts->create($data, $role, $request->user(), $permissions);
 
         $redirect = match ($role) {
             User::ROLE_STAFF => route('admin.staff.index'),
@@ -118,10 +121,11 @@ class UserController extends Controller
             return null;
         }
 
-        return User::role(User::ROLE_MEMBER)
+        // Any user can be a sponsor: members, teachers, staff and super admins all have a tree.
+        return User::query()
             ->where(fn ($q) => $q->where('username', $value)->orWhere('referral_code', strtoupper($value)))
             ->first()
-            ?? throw ValidationException::withMessages(['sponsor' => 'No member found with that username or referral code.']);
+            ?? throw ValidationException::withMessages(['sponsor' => 'No user found with that username or referral code.']);
     }
 
     /** @return list<string> */

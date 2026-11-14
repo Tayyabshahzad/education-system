@@ -55,7 +55,7 @@ class WithdrawalService
     public function approve(Withdrawal $withdrawal, User $reviewer, UploadedFile $receipt, ?string $reference = null, ?string $note = null): void
     {
         DB::transaction(function () use ($withdrawal, $reviewer, $receipt, $reference, $note) {
-            $withdrawal = $this->lockPending($withdrawal);
+            $withdrawal = $this->lockPending($withdrawal, $reviewer);
 
             $withdrawal->payout_proof_path = $this->proofImages->store($receipt, 'payout-proofs');
             $withdrawal->payout_reference = $reference;
@@ -66,16 +66,20 @@ class WithdrawalService
     public function reject(Withdrawal $withdrawal, User $reviewer, ?string $note = null): void
     {
         DB::transaction(function () use ($withdrawal, $reviewer, $note) {
-            $withdrawal = $this->lockPending($withdrawal);
+            $withdrawal = $this->lockPending($withdrawal, $reviewer);
             $this->close($withdrawal, 'rejected', $reviewer, $note);
 
             $this->wallet->credit($withdrawal->user, (float) $withdrawal->amount, 'withdrawal_refund', "Refund for rejected withdrawal #{$withdrawal->id}", $withdrawal);
         });
     }
 
-    private function lockPending(Withdrawal $withdrawal): Withdrawal
+    private function lockPending(Withdrawal $withdrawal, User $reviewer): Withdrawal
     {
         $locked = Withdrawal::whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
+        // Staff earn commission too, so they must not approve or reject their own request.
+        if ($locked->user_id === $reviewer->id && ! $reviewer->isSuperAdmin()) {
+            throw ValidationException::withMessages(['withdrawal' => 'You cannot review your own withdrawal request. A super admin will process it.']);
+        }
         if ($locked->status !== 'pending') {
             throw ValidationException::withMessages(['withdrawal' => 'This request has already been '.$locked->status.'.']);
         }

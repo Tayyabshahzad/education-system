@@ -31,7 +31,7 @@
             @include('profile.partials.update-profile-information-form')
 
             <dl class="mt-6 grid gap-3 border-t border-ink-700 pt-5 text-sm sm:grid-cols-2">
-                @foreach (['Username' => $user->username, 'Mobile' => $user->phone, 'CNIC' => $user->cnic, 'Referral code' => $user->isMember() ? $user->referral_code : null] as $label => $value)
+                @foreach (['Username' => $user->username, 'Mobile' => $user->phone, 'CNIC' => $user->cnic, 'Referral code' => $user->referral_code] as $label => $value)
                     @if ($value)
                         <div><dt class="text-xs text-ink-400">{{ $label }}</dt><dd class="font-mono text-ink-100">{{ $value }}</dd></div>
                     @endif

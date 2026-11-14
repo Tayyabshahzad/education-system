@@ -38,7 +38,10 @@ class AccessAndTeamTest extends TestCase
         $this->actingAs($staff)->get(route('admin.payments.index'))->assertForbidden();
         $this->actingAs($staff)->get(route('admin.settings.edit'))->assertForbidden();
         $this->actingAs($staff)->get(route('admin.staff.index'))->assertForbidden();
-        $this->actingAs($staff)->get(route('team.index'))->assertForbidden();
+        // Fee payments and classes stay member-only; team and wallet are open to every role.
+        $this->actingAs($staff)->get(route('payments.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('classes.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('team.index'))->assertOk();
     }
 
     public function test_super_admin_reaches_everything(): void
@@ -190,6 +193,8 @@ class AccessAndTeamTest extends TestCase
         $a = $this->member();
         $b = $this->member(sponsor: $a);
         $c = $this->member(sponsor: $b);
+        $b->forceFill(['status' => 'active'])->save();
+        $c->forceFill(['status' => 'active'])->save();
         $stranger = $this->member();
 
         $this->actingAs($a)->get(route('team.tree'))->assertOk()->assertSee($b->username)->assertSee($c->username);
@@ -225,6 +230,92 @@ class AccessAndTeamTest extends TestCase
         ])->assertSessionHasErrors('sponsor');
 
         $this->assertNull($a->fresh()->sponsor_id);
+    }
+
+    public function test_only_super_admin_defines_staff_permissions(): void
+    {
+        $manager = $this->staff(['staff.manage']);
+        $other = $this->staff(['payments.view']);
+
+        // Editing self or another staff account cannot change permissions.
+        foreach ([$manager, $other] as $target) {
+            $this->actingAs($manager)->put(route('admin.staff.update', $target), [
+                'name' => $target->name, 'email' => $target->email, 'status' => 'active',
+                'permissions' => ['staff.manage', 'settings.manage', 'withdrawals.review'],
+            ])->assertSessionHasNoErrors();
+        }
+        $this->assertFalse($manager->fresh()->can('settings.manage'));
+        $this->assertTrue($manager->fresh()->can('staff.manage'));
+        $this->assertSame(['payments.view'], $other->fresh()->getDirectPermissions()->pluck('name')->all());
+
+        // New staff created by a non-super-admin start with no permissions.
+        $this->actingAs($manager)->post(route('admin.users.store'), [
+            'role' => User::ROLE_STAFF, 'name' => 'New Staff', 'email' => 'new@example.com',
+            'password' => 'password', 'password_confirmation' => 'password',
+            'permissions' => ['settings.manage'],
+        ])->assertSessionHasNoErrors();
+        $this->assertCount(0, User::firstWhere('email', 'new@example.com')->getAllPermissions());
+
+        // The super admin can still set them.
+        $this->actingAs($this->superAdmin())->put(route('admin.staff.update', $other), [
+            'name' => $other->name, 'email' => $other->email, 'status' => 'active',
+            'permissions' => ['withdrawals.view'],
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($other->fresh()->can('withdrawals.view'));
+    }
+
+    public function test_invalid_sponsor_leaves_member_details_unchanged(): void
+    {
+        $a = $this->member();
+        $b = $this->member(sponsor: $a);
+
+        $this->actingAs($this->superAdmin())->put(route('admin.members.update', $b), [
+            'name' => 'Changed Name', 'email' => $b->email,
+            'phone' => $b->phone, 'cnic' => $b->cnic, 'country' => 'PK', 'sponsor' => 'nobody-here',
+        ])->assertSessionHasErrors('sponsor');
+
+        $this->assertNotSame('Changed Name', $b->fresh()->name);
+    }
+
+    public function test_tree_shows_only_active_users(): void
+    {
+        $a = $this->member();
+        $active = $this->member(sponsor: $a);
+        $pending = $this->member(sponsor: $a);
+        $blocked = $this->member(sponsor: $a);
+        $underPending = $this->member(sponsor: $pending);
+        $active->forceFill(['status' => 'active'])->save();
+        $blocked->forceFill(['status' => 'blocked'])->save();
+        $underPending->forceFill(['status' => 'active'])->save();
+
+        $this->actingAs($a)->get(route('team.tree'))->assertOk()
+            ->assertSee($active->username)
+            ->assertDontSee($pending->username)
+            ->assertDontSee($blocked->username)
+            ->assertDontSee($underPending->username);
+
+        // Once the admin activates the pending member, they (and their team) appear.
+        $this->actingAs($this->superAdmin())->patch(route('admin.members.status', $pending), ['status' => 'active']);
+        $this->actingAs($a)->get(route('team.tree'))->assertOk()
+            ->assertSee($pending->username)
+            ->assertSee($underPending->username);
+    }
+
+    public function test_admin_genealogy_shows_staff_with_a_team_as_a_tree_top(): void
+    {
+        $staff = $this->staff();
+        $joiner = $this->member(sponsor: $staff);
+        $joiner->forceFill(['status' => 'active'])->save();
+        $this->member(); // an ordinary root member
+
+        $this->actingAs($this->superAdmin())->get(route('admin.genealogy'))
+            ->assertOk()->assertSee($staff->username.' — '.$staff->name.' (Staff)');
+        $this->actingAs($this->superAdmin())->get(route('admin.genealogy', $staff))
+            ->assertOk()->assertSee($joiner->username);
+
+        // Deleting the staff account moves their team up instead of orphaning it.
+        $this->actingAs($this->superAdmin())->delete(route('admin.staff.destroy', $staff));
+        $this->assertNull($joiner->fresh()->sponsor_id);
     }
 
     public function test_deleting_member_moves_their_team_up(): void

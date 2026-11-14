@@ -24,6 +24,9 @@ class Permissions
             'withdrawals.view' => 'View withdrawal requests',
             'withdrawals.review' => 'Approve / reject withdrawals',
         ],
+        'Reports' => [
+            'reports.view' => 'View reports & export month-end records',
+        ],
         'Classes' => [
             'batches.manage' => 'Create batches & assign members',
             'teachers.manage' => 'Add / edit teachers',

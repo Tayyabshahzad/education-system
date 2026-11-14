@@ -272,6 +272,14 @@ class User extends Authenticatable
         return Str::upper(Str::substr($this->name, 0, 1));
     }
 
+    public static function roleLabel(string $role): string
+    {
+        return [
+            self::ROLE_SUPER_ADMIN => 'Super Admin', self::ROLE_STAFF => 'Staff',
+            self::ROLE_TEACHER => 'Teacher', self::ROLE_MEMBER => 'Member',
+        ][$role] ?? 'Member';
+    }
+
     public function primaryRole(): string
     {
         return $this->getRoleNames()->first() ?? self::ROLE_MEMBER;

@@ -217,6 +217,17 @@ class IdentityProfileWithdrawalTest extends TestCase
             $this->actingAs($member)->get(route($route))->assertSee('Copy referral link')->assertSee($member->referralLink());
         }
 
-        $this->actingAs($this->superAdmin())->get(route('dashboard'))->assertDontSee('Copy referral link');
+        // Every other role gets the same link, in the header and on their dashboard.
+        $others = [$this->superAdmin(), $this->staff(), User::factory()->withRole(User::ROLE_TEACHER)->create()];
+        foreach ($others as $user) {
+            $this->actingAs($user)->get(route('dashboard'))->assertOk()
+                ->assertSee('Copy referral link')
+                ->assertSee('Your referral link')
+                ->assertSee($user->referralLink())
+                ->assertSee($user->referral_code);
+            foreach (['team.index', 'team.tree', 'team.create', 'wallet.index', 'withdrawals.index'] as $route) {
+                $this->actingAs($user)->get(route($route))->assertOk();
+            }
+        }
     }
 }

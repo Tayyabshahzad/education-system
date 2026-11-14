@@ -23,12 +23,17 @@
             <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-ink-900 {{ $dot }}"></span>
         </span>
         <span class="mt-2 block truncate text-sm font-medium text-ink-100">{{ $u->username }}</span>
-        <span class="money block text-[11px] text-ink-400">${{ number_format((float) $u->paid_amount, 0) }} paid</span>
+        @if (($isRoot ?? false) && ! $u->isMember())
+            {{-- Teachers, staff and admins pay no fee; show their role instead. --}}
+            <span class="block text-[11px] text-gold">{{ \App\Models\User::roleLabel($u->primaryRole()) }}</span>
+        @else
+            <span class="money block text-[11px] text-ink-400">${{ number_format((float) $u->paid_amount, 0) }} paid</span>
+        @endif
         @if ($node['more'])
             <span class="mt-1.5 inline-block rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-medium text-gold">more below ↓</span>
         @endif
     </a>
-    @if ($isAdminView && ($isRoot ?? false))
+    @if ($isAdminView && ($isRoot ?? false) && $u->isMember())
         <a href="{{ route('admin.members.show', $u) }}" class="mt-2 text-xs link">Open profile</a>
     @endif
 

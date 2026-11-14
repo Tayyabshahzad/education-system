@@ -55,7 +55,8 @@ class TeamUserController extends Controller
         }
         $user->forceFill(['status' => $data['status']])->save();
 
-        if ($role === User::ROLE_STAFF) {
+        // Permissions are defined only by a super admin; anyone else's submitted permissions are ignored.
+        if ($role === User::ROLE_STAFF && $request->user()->isSuperAdmin()) {
             $user->syncPermissions($data['permissions'] ?? []);
         }
 
@@ -71,6 +72,8 @@ class TeamUserController extends Controller
         if ($role === User::ROLE_TEACHER) {
             $user->teachingBatches()->update(['teacher_id' => null]);
         }
+        // Staff and teachers can have their own referral team; it moves up instead of being orphaned.
+        User::where('sponsor_id', $user->id)->update(['sponsor_id' => $user->sponsor_id]);
         $user->forceFill(['email' => $user->email.'#deleted-'.$user->id, 'username' => $user->username.'#deleted-'.$user->id])->save();
         $user->delete();
 

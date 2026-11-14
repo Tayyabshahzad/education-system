@@ -183,9 +183,9 @@
                             </div>
                         @endforeach
                     </dl>
-                    @can('members.view')
+                    @if ($member->isMember() && auth()->user()->can('members.view'))
                         <a href="{{ route('admin.members.show', $member) }}" class="btn btn-secondary btn-sm mt-5 w-full">Open full member profile</a>
-                    @endcan
+                    @endif
                 </div>
             </div>
 

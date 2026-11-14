@@ -9,7 +9,25 @@
                 :hint="'$'.number_format($stats['walletLiability'], 2).' in wallets · $'.number_format($stats['withdrawn'], 2).' withdrawn'" />
     </div>
 
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
+    @if ($businessChart)
+        @include('partials.metrics-chart', [
+            'chart' => $businessChart,
+            'title' => 'Business overview',
+            'subtitle' => 'Members joined, approved sales, commission paid and withdrawals, month by month',
+            'class' => 'mt-6',
+        ])
+        <div class="mt-3 text-right">
+            <a href="{{ route('admin.reports.index') }}" class="link text-sm">Open full reports &amp; month-end export →</a>
+        </div>
+    @endif
+
+    {{-- The signed-in admin's own referral network and earnings --}}
+    <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-ink-100">My network</h2>
+    @include('partials.network-summary')
+
+    <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-ink-100">Operations</h2>
+
+    <div class="grid gap-6 xl:grid-cols-2">
         @can('payments.view')
             <div class="card">
                 <div class="card-header">
@@ -64,6 +82,33 @@
     </div>
 
     @can('members.view')
+        <div class="card mt-6">
+            <div class="card-header">
+                <h3 class="card-title">Full fee not paid <span class="badge badge-gold ml-1">{{ $unpaidCount }}</span></h3>
+                <a href="{{ route('admin.members.index', ['paid' => 'notfull']) }}" class="btn btn-secondary btn-sm">View all</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Member</th><th>Mobile</th><th>Sponsor</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Joined</th></tr></thead>
+                    <tbody>
+                        @forelse ($unpaidMembers as $m)
+                            <tr>
+                                <td><a href="{{ route('admin.members.show', $m) }}" class="font-medium text-ink-100 hover:text-gold">{{ $m->name }}</a><div class="text-xs text-ink-400">{{ $m->username }}</div></td>
+                                <td class="font-mono text-xs text-ink-400">{{ $m->phone ?? '—' }}</td>
+                                <td class="text-ink-400">{{ $m->sponsor?->username ?? '—' }}</td>
+                                <td class="money">${{ number_format((float) $m->paid_amount, 2) }}</td>
+                                <td class="money text-bear-400">${{ number_format(max(0, $stats['fullFee'] - (float) $m->paid_amount), 2) }}</td>
+                                <td><x-status-badge :status="$m->status" /></td>
+                                <td class="text-ink-400">{{ $m->created_at->format('d M Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7"><x-empty icon="check" title="Everyone has paid the full fee" /></td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card mt-6">
             <div class="card-header">
                 <h3 class="card-title">Newest members</h3>

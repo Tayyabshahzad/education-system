@@ -106,12 +106,25 @@ class RegistrationTest extends TestCase
         $this->assertSame(0, Payment::count());
     }
 
-    public function test_staff_referral_code_cannot_be_used_as_sponsor(): void
+    public function test_every_role_referral_link_registers_into_their_own_tree(): void
     {
-        $staff = $this->staff();
+        $sponsors = [
+            $this->staff(),
+            User::factory()->withRole(User::ROLE_TEACHER)->create(),
+            $this->superAdmin(),
+        ];
 
-        $this->post('/register', $this->payload(['sponsor_code' => $staff->referral_code]))
-            ->assertSessionHasErrors('sponsor_code');
+        foreach ($sponsors as $i => $sponsor) {
+            $this->get('/register?ref='.$sponsor->referral_code)->assertOk()->assertSee($sponsor->name);
+
+            $this->post('/register', $this->payload([
+                'sponsor_code' => $sponsor->referral_code,
+                'email' => "joiner{$i}@example.com", 'phone' => "0300123456{$i}", 'cnic' => "35202-123456{$i}-1",
+            ]))->assertSessionHasNoErrors();
+            auth()->logout();
+
+            $this->assertSame($sponsor->id, User::firstWhere('email', "joiner{$i}@example.com")->sponsor_id);
+        }
     }
 
     public function test_amount_outside_min_and_max_is_rejected(): void

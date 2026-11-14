@@ -89,7 +89,8 @@ class PaymentService
             $this->assertPending($payment);
 
             // Pending proof is already counted in payableRemaining(), so only guard the hard cap.
-            $member = $payment->user;
+            // Lock the member so two approvals at once cannot both pass this check.
+            $member = User::whereKey($payment->user_id)->lockForUpdate()->firstOrFail();
             if ((float) $member->paid_amount + (float) $payment->amount > Setting::money('max_fee') + 0.001) {
                 throw ValidationException::withMessages([
                     'payment' => 'Approving this would take the member above the maximum fee of $'.Setting::money('max_fee').'.',

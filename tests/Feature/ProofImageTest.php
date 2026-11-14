@@ -106,4 +106,15 @@ class ProofImageTest extends TestCase
 
         app(ProofImageService::class)->store(UploadedFile::fake()->createWithContent('fake.jpg', 'not really an image'));
     }
+
+    public function test_image_with_huge_dimensions_is_refused_before_decoding(): void
+    {
+        $img = imagecreatetruecolor(13000, 50);
+        $path = tempnam(sys_get_temp_dir(), 'huge').'.png';
+        imagepng($img, $path);
+        imagedestroy($img);
+
+        $this->expectException(ValidationException::class);
+        app(ProofImageService::class)->store(new UploadedFile($path, 'huge.png', 'image/png', null, true));
+    }
 }

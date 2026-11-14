@@ -42,7 +42,7 @@
 
     if ($isTeacher) {
         $sections['Teaching'] = [
-            ['My Batches', 'dashboard', 'academic', 'dashboard', true],
+            ['Dashboard', 'dashboard', 'home', 'dashboard', true],
         ];
     }
 
@@ -58,6 +58,7 @@
         $sections['Finance'] = [
             ['Payments', 'admin.payments.index', 'card', 'admin.payments.*', $authUser->can('payments.view')],
             ['Withdrawals', 'admin.withdrawals.index', 'arrow-up', 'admin.withdrawals.*', $authUser->can('withdrawals.view')],
+            ['Reports', 'admin.reports.index', 'chart', 'admin.reports.*', $authUser->can('reports.view')],
         ];
         $sections['Academy'] = [
             ['Batches', 'admin.batches.index', 'calendar', 'admin.batches.*', $authUser->can('batches.manage')],
@@ -69,9 +70,20 @@
         ];
     }
 
-    $roleLabel = [
-        'super-admin' => 'Super Admin', 'staff' => 'Staff', 'teacher' => 'Teacher', 'member' => 'Member',
-    ][$authUser->primaryRole()] ?? 'Member';
+    // Teachers, staff and admins also have a referral link, their own team and a commission wallet.
+    if (! $isMember) {
+        $sections['My Network'] = [
+            ['My Team', 'team.index', 'users', 'team.index', true],
+            ['My Tree', 'team.tree', 'tree', 'team.tree', true],
+            ['Register Member', 'team.create', 'user-plus', 'team.create', true],
+        ];
+        $sections['My Earnings'] = [
+            ['My Wallet', 'wallet.index', 'wallet', 'wallet.*', true],
+            ['My Withdrawals', 'withdrawals.index', 'arrow-up', 'withdrawals.*', true],
+        ];
+    }
+
+    $roleLabel = \App\Models\User::roleLabel($authUser->primaryRole());
 @endphp
 
 <div x-data="{ nav: false }" class="min-h-full">
@@ -154,28 +166,26 @@
             @isset($actions)
                 <div class="flex shrink-0 items-center gap-2">{{ $actions }}</div>
             @endisset
-            @if ($isMember)
-                {{-- Referral link copy button, visible on every member page (icon-only on phones) --}}
-                <div x-data="{ copied: false }" class="shrink-0">
-                    <input x-ref="ref" type="text" readonly value="{{ $authUser->referralLink() }}" class="sr-only" tabindex="-1" aria-hidden="true">
-                    <button type="button" title="{{ $authUser->referralLink() }}"
-                            class="flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm font-semibold text-gold transition hover:bg-gold/15"
-                            @click="
-                                const v = $refs.ref.value;
-                                (window.isSecureContext && navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
-                                    .catch(() => { $refs.ref.classList.remove('sr-only'); $refs.ref.select(); document.execCommand('copy'); $refs.ref.classList.add('sr-only'); });
-                                copied = true; setTimeout(() => copied = false, 1800)">
-                        <x-icon x-show="!copied" name="link" class="h-4 w-4" />
-                        <x-icon x-show="copied" x-cloak name="check" class="h-4 w-4" />
-                        <span class="hidden sm:inline" x-text="copied ? 'Link copied!' : 'Copy referral link'">Copy referral link</span>
-                        <span class="sm:hidden" x-show="copied" x-cloak>Copied</span>
-                    </button>
-                </div>
-                <a href="{{ route('wallet.index') }}" class="hidden items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-1.5 text-sm md:flex">
-                    <x-icon name="wallet" class="h-4 w-4 text-gold" />
-                    <span class="money text-ink-100">${{ number_format((float) $authUser->wallet_balance, 2) }}</span>
-                </a>
-            @endif
+            {{-- Referral link copy button, visible on every page for every role (icon-only on phones) --}}
+            <div x-data="{ copied: false }" class="shrink-0">
+                <input x-ref="ref" type="text" readonly value="{{ $authUser->referralLink() }}" class="sr-only" tabindex="-1" aria-hidden="true">
+                <button type="button" title="{{ $authUser->referralLink() }}"
+                        class="flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm font-semibold text-gold transition hover:bg-gold/15"
+                        @click="
+                            const v = $refs.ref.value;
+                            (window.isSecureContext && navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
+                                .catch(() => { $refs.ref.classList.remove('sr-only'); $refs.ref.select(); document.execCommand('copy'); $refs.ref.classList.add('sr-only'); });
+                            copied = true; setTimeout(() => copied = false, 1800)">
+                    <x-icon x-show="!copied" name="link" class="h-4 w-4" />
+                    <x-icon x-show="copied" x-cloak name="check" class="h-4 w-4" />
+                    <span class="hidden sm:inline" x-text="copied ? 'Link copied!' : 'Copy referral link'">Copy referral link</span>
+                    <span class="sm:hidden" x-show="copied" x-cloak>Copied</span>
+                </button>
+            </div>
+            <a href="{{ route('wallet.index') }}" class="hidden items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-1.5 text-sm md:flex">
+                <x-icon name="wallet" class="h-4 w-4 text-gold" />
+                <span class="money text-ink-100">${{ number_format((float) $authUser->wallet_balance, 2) }}</span>
+            </a>
         </header>
 
         <main class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

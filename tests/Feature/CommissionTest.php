@@ -130,4 +130,26 @@ class CommissionTest extends TestCase
         $this->assertSame($new->id, $tx->from_user_id);
         $this->assertEquals(30, $tx->balance_after);
     }
+
+    public function test_teacher_staff_and_admin_earn_commission_from_their_own_tree(): void
+    {
+        // Staff -> L1 member -> new member, with "upline must be fully paid" switched on:
+        // staff never pay a fee, so that rule must not block them.
+        Setting::setMany(['upline_must_be_full' => true]);
+        $staff = $this->staff();
+        $l1 = $this->member(sponsor: $staff);
+        $l1->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+        $new = $this->member(sponsor: $l1);
+
+        $this->pay($new, 200);
+
+        $this->assertEquals(30, $l1->fresh()->wallet_balance);
+        $this->assertEquals(20, $staff->fresh()->wallet_balance, 'Staff earns level 2');
+
+        foreach ([User::factory()->withRole(User::ROLE_TEACHER)->create(), $this->admin] as $sponsor) {
+            $direct = $this->member(sponsor: $sponsor);
+            $this->pay($direct, 200);
+            $this->assertEquals(30, $sponsor->fresh()->wallet_balance, 'Direct sponsor earns level 1');
+        }
+    }
 }

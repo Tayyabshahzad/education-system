@@ -39,6 +39,7 @@ class MemberController extends Controller
             ->when($paid === 'full', fn ($q) => $q->where('paid_amount', '>=', $fullFee))
             ->when($paid === 'partial', fn ($q) => $q->where('paid_amount', '>', 0)->where('paid_amount', '<', $fullFee))
             ->when($paid === 'none', fn ($q) => $q->where('paid_amount', 0))
+            ->when($paid === 'notfull', fn ($q) => $q->where('paid_amount', '<', $fullFee))
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -82,16 +83,21 @@ class MemberController extends Controller
             ...MemberDetailsRules::messages(),
         ]);
 
-        $member->fill(collect($validated)->only(['name', 'email', 'phone', 'cnic', 'country'])->all());
-        if (! empty($validated['password'])) {
-            $member->password = $validated['password'];
-        }
-        $member->save();
-
+        // Resolve the sponsor before saving anything, so an invalid sponsor leaves the member untouched.
         $newSponsor = $this->resolveSponsor($validated['sponsor'] ?? null);
-        if ($newSponsor?->id !== $member->sponsor_id) {
-            $members->changeSponsor($member, $newSponsor);
-        }
+
+        DB::transaction(function () use ($member, $validated, $newSponsor, $members) {
+            $member->fill(collect($validated)->only(['name', 'email', 'phone', 'cnic', 'country'])->all());
+            if (! empty($validated['password'])) {
+                $member->password = $validated['password'];
+            }
+            $member->save();
+
+            // changeSponsor() throws on an invalid placement, which rolls the details back too.
+            if ($newSponsor?->id !== $member->sponsor_id) {
+                $members->changeSponsor($member, $newSponsor);
+            }
+        });
 
         return redirect()->route('admin.members.show', $member)->with('success', 'Member updated.');
     }
@@ -138,7 +144,15 @@ class MemberController extends Controller
 
     public function tree(Request $request, GenealogyTree $tree, ?User $root = null): View
     {
-        $root ??= User::role(User::ROLE_MEMBER)->whereNull('sponsor_id')->orderBy('id')->first();
+        // Tree tops: members without a sponsor, plus any teacher/staff/admin who has their own team.
+        // Only active users appear in the tree (see GenealogyTree).
+        $topLevel = User::whereNull('sponsor_id')
+            ->where('status', 'active')
+            ->where(fn ($q) => $q->role(User::ROLE_MEMBER)->orWhereHas('referrals', fn ($r) => $r->where('status', 'active')))
+            ->with('roles:id,name')
+            ->orderBy('id')
+            ->get();
+        $root ??= $topLevel->first();
 
         return view('genealogy.tree', [
             'tree' => $root ? $tree->build($root) : null,
@@ -146,7 +160,7 @@ class MemberController extends Controller
             'home' => null,
             'routeName' => 'admin.genealogy',
             'canGoUp' => (bool) $root?->sponsor_id,
-            'topLevel' => User::role(User::ROLE_MEMBER)->whereNull('sponsor_id')->orderBy('id')->get(['id', 'username', 'name']),
+            'topLevel' => $topLevel,
         ]);
     }
 
@@ -157,12 +171,13 @@ class MemberController extends Controller
             return null;
         }
 
-        $sponsor = User::role(User::ROLE_MEMBER)
+        // Any user can be a sponsor: members, teachers, staff and super admins all have a tree.
+        $sponsor = User::query()
             ->where(fn ($q) => $q->where('username', $value)->orWhere('referral_code', strtoupper($value)))
             ->first();
 
         if (! $sponsor) {
-            throw ValidationException::withMessages(['sponsor' => 'No member found with that username or referral code.']);
+            throw ValidationException::withMessages(['sponsor' => 'No user found with that username or referral code.']);
         }
 
         return $sponsor;

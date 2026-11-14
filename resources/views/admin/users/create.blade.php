@@ -1,4 +1,4 @@
-<x-app-layout title="Add User" subtitle="Choose the role first. Members are always placed under a sponsor; staff and teachers have no sponsor or referral link.">
+<x-app-layout title="Add User" subtitle="Choose the role first. Members are always placed under a sponsor. Every user, whatever the role, gets their own referral link.">
     <form method="POST" action="{{ route('admin.users.store') }}" x-data="{ role: @js($role), amount: {{ (float) old('joining_amount', $fullFee) }} }" class="space-y-6">
         @csrf
 
@@ -111,6 +111,9 @@
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Access</h3></div>
                         <div class="card-body space-y-4">
+                            @unless (auth()->user()->isSuperAdmin())
+                                <p class="text-sm text-ink-300">This staff account will start with no permissions. A super admin decides what they can do.</p>
+                            @else
                             @foreach (\App\Support\Permissions::GROUPS as $group => $perms)
                                 <fieldset>
                                     <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{{ $group }}</legend>
@@ -123,6 +126,7 @@
                                     @endforeach
                                 </fieldset>
                             @endforeach
+                            @endunless
                         </div>
                     </div>
                 </template>

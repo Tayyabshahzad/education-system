@@ -26,19 +26,22 @@ Route::middleware('auth')->group(function () {
     // Admin's transfer receipt for a withdrawal (requesting member or withdrawal staff; checked in the controller).
     Route::get('/withdrawals/{withdrawal}/receipt', [Admin\WithdrawalController::class, 'receipt'])->name('withdrawals.receipt');
 
-    /* ---------------- Member area ---------------- */
-    Route::middleware('role:'.User::ROLE_MEMBER)->group(function () {
-        Route::get('/team', [Member\TeamController::class, 'index'])->name('team.index');
-        Route::get('/team/tree/{root?}', [Member\TeamController::class, 'tree'])->name('team.tree');
-        Route::get('/team/register', [Member\TeamController::class, 'create'])->name('team.create');
-        Route::post('/team/register', [Member\TeamController::class, 'store'])->name('team.store');
+    /* ---------------- Referral network & earnings (every role) ---------------- */
+    // Every user (member, teacher, staff, super admin) has a referral link, their own team
+    // tree, earns commission into a wallet and can withdraw it.
+    Route::get('/team', [Member\TeamController::class, 'index'])->name('team.index');
+    Route::get('/team/tree/{root?}', [Member\TeamController::class, 'tree'])->name('team.tree');
+    Route::get('/team/register', [Member\TeamController::class, 'create'])->name('team.create');
+    Route::post('/team/register', [Member\TeamController::class, 'store'])->name('team.store');
 
+    Route::get('/wallet', [Member\WalletController::class, 'index'])->name('wallet.index');
+    Route::get('/withdrawals', [Member\WalletController::class, 'withdrawals'])->name('withdrawals.index');
+    Route::post('/withdrawals', [Member\WalletController::class, 'requestWithdrawal'])->name('withdrawals.store');
+
+    /* ---------------- Member area (fee payments & classes) ---------------- */
+    Route::middleware('role:'.User::ROLE_MEMBER)->group(function () {
         Route::get('/payments', [Member\PaymentController::class, 'index'])->name('payments.index');
         Route::post('/payments', [Member\PaymentController::class, 'store'])->name('payments.store');
-
-        Route::get('/wallet', [Member\WalletController::class, 'index'])->name('wallet.index');
-        Route::get('/withdrawals', [Member\WalletController::class, 'withdrawals'])->name('withdrawals.index');
-        Route::post('/withdrawals', [Member\WalletController::class, 'requestWithdrawal'])->name('withdrawals.store');
 
         Route::get('/classes', [Member\ClassController::class, 'index'])->name('classes.index');
     });
@@ -78,6 +81,11 @@ Route::middleware('auth')->group(function () {
         Route::middleware('can:withdrawals.review')->group(function () {
             Route::post('/withdrawals/{withdrawal}/approve', [Admin\WithdrawalController::class, 'approve'])->name('withdrawals.approve');
             Route::post('/withdrawals/{withdrawal}/reject', [Admin\WithdrawalController::class, 'reject'])->name('withdrawals.reject');
+        });
+
+        Route::middleware('can:reports.view')->group(function () {
+            Route::get('/reports', [Admin\ReportController::class, 'index'])->name('reports.index');
+            Route::get('/reports/export', [Admin\ReportController::class, 'export'])->name('reports.export');
         });
 
         Route::middleware('can:batches.manage')->group(function () {

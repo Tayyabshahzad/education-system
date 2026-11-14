@@ -18,9 +18,9 @@
             <div>
                 <x-input-label for="jump" value="Show tree from" />
                 <select id="jump" class="field-select min-w-56" onchange="if (this.value) window.location = this.value">
-                    <option value="">Choose a top-level member…</option>
+                    <option value="">Choose a top-level user…</option>
                     @foreach ($topLevel as $t)
-                        <option value="{{ route('admin.genealogy', $t) }}" @selected($root?->is($t))>{{ $t->username }} — {{ $t->name }}</option>
+                        <option value="{{ route('admin.genealogy', $t) }}" @selected($root?->is($t))>{{ $t->username }} — {{ $t->name }}{{ $t->isMember() ? '' : ' ('.\App\Models\User::roleLabel($t->primaryRole()).')' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -31,8 +31,7 @@
     <div class="mb-4 flex flex-wrap items-center gap-4 text-xs text-ink-400">
         <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-gold"></span> Full package (${{ number_format($fullFee, 0) }})</span>
         <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-bull"></span> Active, partially paid</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-ink-400"></span> Pending payment</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-bear"></span> Blocked</span>
+        <span>Only active users are shown. Pending or blocked users appear once an admin activates them.</span>
     </div>
 
     <div class="card grid-bg overflow-x-auto p-6 sm:p-8">

@@ -60,10 +60,12 @@ class CommissionService
 
     private function eligible(User $upline, bool $requireFullUpline): bool
     {
-        if ($upline->trashed() || $upline->status !== 'active' || ! $upline->isMember()) {
+        // Every role earns commission from its own tree (members, teachers, staff, super admins).
+        if ($upline->trashed() || $upline->status !== 'active') {
             return false;
         }
 
-        return ! $requireFullUpline || $upline->isFullyPaid();
+        // "Upline must be fully paid" only applies to members; other roles never pay a fee.
+        return ! $requireFullUpline || ! $upline->isMember() || $upline->isFullyPaid();
     }
 }

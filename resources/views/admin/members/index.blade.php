@@ -19,6 +19,7 @@
         <select name="paid" class="field-select" onchange="this.form.submit()">
             <option value="">Any payment</option>
             <option value="full" @selected($paid === 'full')>Full (${{ number_format($fullFee, 0) }}+)</option>
+            <option value="notfull" @selected($paid === 'notfull')>Not fully paid</option>
             <option value="partial" @selected($paid === 'partial')>Partial</option>
             <option value="none" @selected($paid === 'none')>Not paid</option>
         </select>

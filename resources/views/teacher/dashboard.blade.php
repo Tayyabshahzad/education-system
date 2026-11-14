@@ -1,4 +1,7 @@
-<x-app-layout title="My Batches" subtitle="Your assigned class batches and schedules.">
+<x-app-layout title="Dashboard" subtitle="Your referral link, earnings and assigned class batches.">
+    @include('partials.network-summary')
+
+    <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-ink-100">My Batches</h2>
     @if ($batches->isEmpty())
         <div class="card"><x-empty icon="academic" title="No batches assigned yet" text="Once the academy team assigns you a batch, its schedule and student list appear here." /></div>
     @else

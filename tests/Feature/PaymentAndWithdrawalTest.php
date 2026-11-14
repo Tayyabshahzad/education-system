@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Payment;
 use App\Models\Withdrawal;
+use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -187,5 +189,29 @@ class PaymentAndWithdrawalTest extends TestCase
 
         $this->actingAs($member)->post(route('withdrawals.store'), ['amount' => 5, 'method' => 'Easypaisa', 'account_title' => 'Me', 'account_number' => '0300'])
             ->assertSessionHasErrors('amount');
+    }
+
+    public function test_staff_cannot_review_their_own_withdrawal(): void
+    {
+        $staff = $this->staff(['withdrawals.view', 'withdrawals.review']);
+        DB::transaction(fn () => app(WalletService::class)->credit($staff, 50, 'commission', 'test'));
+
+        $this->actingAs($staff)->post(route('withdrawals.store'), [
+            'amount' => 20, 'method' => 'Bank Transfer', 'account_title' => 'Staff', 'account_number' => '123',
+        ])->assertSessionHasNoErrors();
+        $withdrawal = Withdrawal::sole();
+
+        $this->actingAs($staff)->post(route('admin.withdrawals.reject', $withdrawal), ['note' => 'self'])
+            ->assertSessionHasErrors('withdrawal');
+        $this->actingAs($staff)->post(route('admin.withdrawals.approve', $withdrawal), [
+            'proof' => UploadedFile::fake()->image('r.jpg'),
+        ])->assertSessionHasErrors('withdrawal');
+        $this->assertSame('pending', $withdrawal->fresh()->status);
+
+        // A super admin processes it.
+        $this->actingAs($this->superAdmin())->post(route('admin.withdrawals.approve', $withdrawal), [
+            'proof' => UploadedFile::fake()->image('r.jpg'),
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('approved', $withdrawal->fresh()->status);
     }
 }

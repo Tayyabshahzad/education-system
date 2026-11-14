@@ -57,28 +57,7 @@
 
     <div class="mt-6 grid gap-6 xl:grid-cols-3">
         {{-- Referral link --}}
-        <div class="card xl:col-span-2">
-            <div class="card-header">
-                <h3 class="card-title">Your referral link</h3>
-                <span class="font-mono text-xs text-ink-400">Code: <span class="text-gold">{{ $user->referral_code }}</span></span>
-            </div>
-            <div class="card-body space-y-5">
-                <x-copy-field :value="$user->referralLink()" label="Copy link" />
-                <div class="grid gap-3 sm:grid-cols-3">
-                    @foreach ($commissionLevels as $level => $amount)
-                        <div class="rounded-xl border border-ink-700 bg-ink-800/50 p-4">
-                            <div class="flex items-center justify-between text-xs text-ink-400">
-                                <span>Level {{ $level }}</span>
-                                <span class="money text-gold">${{ number_format($amount, 0) }} each</span>
-                            </div>
-                            <div class="mt-2 font-display text-xl font-semibold text-ink-100">{{ $levels[$level]->count() }} <span class="text-sm font-normal text-ink-400">members</span></div>
-                            <div class="mt-1 text-xs text-bull-400">Earned <span class="money">${{ number_format((float) ($earningsByLevel[$level] ?? 0), 2) }}</span></div>
-                        </div>
-                    @endforeach
-                </div>
-                <p class="text-xs text-ink-400">You earn when a member in your 3-level team completes the full <span class="money">${{ number_format($fullFee, 0) }}</span> package.</p>
-            </div>
-        </div>
+        @include('partials.referral-card', ['refUser' => $user, 'class' => 'xl:col-span-2'])
 
         {{-- Fee progress --}}
         <div class="card">
@@ -105,6 +84,9 @@
             </div>
         </div>
     </div>
+
+    {{-- Earnings over time --}}
+    @include('partials.metrics-chart', ['chart' => $personalChart, 'title' => 'My performance', 'subtitle' => 'People who joined your 3-level team, commission you earned and money you withdrew', 'class' => 'mt-6'])
 
     {{-- Recent activity --}}
     <div class="card mt-6">

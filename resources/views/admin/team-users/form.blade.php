@@ -44,7 +44,11 @@
             </div>
         </div>
 
-        @if ($isStaff)
+        @if ($isStaff && ! auth()->user()->isSuperAdmin())
+            <div class="card">
+                <div class="card-body text-sm text-ink-300">Permissions can only be changed by a super admin.</div>
+            </div>
+        @elseif ($isStaff)
             <div class="card">
                 <div class="card-header"><h3 class="card-title">What can this person do?</h3></div>
                 <div class="card-body space-y-5">

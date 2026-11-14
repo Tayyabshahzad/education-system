@@ -21,7 +21,7 @@ class RegisteredUserController extends Controller
     public function create(Request $request): View
     {
         $refCode = strtoupper((string) $request->query('ref', old('sponsor_code', '')));
-        $sponsor = $refCode ? User::role(User::ROLE_MEMBER)->where('referral_code', $refCode)->first() : null;
+        $sponsor = $refCode ? User::where('referral_code', $refCode)->first() : null;
 
         return view('auth.register', [
             'sponsor' => $sponsor,
@@ -34,7 +34,8 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Every member must sit under a sponsor, so a valid member referral code is required.
+     * Every member must sit under a sponsor, so a valid referral code is required. Any user's
+     * code works (member, teacher, staff or super admin); the new member joins their tree.
      * The payment screenshot is submitted together with the registration.
      */
     public function store(Request $request, MemberService $members, PaymentService $payments): RedirectResponse
@@ -52,7 +53,7 @@ class RegisteredUserController extends Controller
             ...MemberDetailsRules::messages(),
         ]);
 
-        $sponsor = User::role(User::ROLE_MEMBER)->where('referral_code', $validated['sponsor_code'])->first();
+        $sponsor = User::where('referral_code', $validated['sponsor_code'])->first();
         if (! $sponsor) {
             return back()->withInput()->withErrors(['sponsor_code' => 'This referral code is not valid.']);
         }
