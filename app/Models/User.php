@@ -220,11 +220,13 @@ class User extends Authenticatable
 
     /**
      * Downline grouped by level: [1 => Collection, 2 => Collection, ...].
+     * Defaults to as many levels as earn commission (Setting::levelCount()).
      *
      * @return array<int, Collection<int, User>>
      */
-    public function downlineByLevel(int $depth = 3): array
+    public function downlineByLevel(?int $depth = null): array
     {
+        $depth ??= Setting::levelCount();
         $levels = [];
         $parentIds = [$this->id];
 

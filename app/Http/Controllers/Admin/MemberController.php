@@ -53,7 +53,7 @@ class MemberController extends Controller
 
         return view('admin.members.show', [
             'member' => $member->load(['sponsor', 'batches.teacher']),
-            'levels' => $member->downlineByLevel(3),
+            'levels' => $member->downlineByLevel(),
             'payments' => $member->payments()->latest()->limit(10)->get(),
             'transactions' => $member->walletTransactions()->with('fromUser:id,username')->latest()->limit(10)->get(),
             'withdrawals' => $member->withdrawals()->latest()->limit(10)->get(),

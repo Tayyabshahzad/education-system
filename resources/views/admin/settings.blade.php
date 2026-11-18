@@ -25,19 +25,31 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Referral commission</h3></div>
+            @php $levelCount = \App\Models\Setting::levelCount(); @endphp
+            <div class="card-header">
+                <h3 class="card-title">Referral commission ({{ $levelCount }} levels)</h3>
+            </div>
+            {{-- Live total so the admin sees what one full-fee member pays out across all levels. --}}
             <div class="card-body space-y-5">
-                <div class="grid gap-5 sm:grid-cols-3">
-                    @foreach ([1 => 'Level 1 (direct sponsor)', 2 => 'Level 2', 3 => 'Level 3'] as $lvl => $label)
+                <p class="text-sm text-ink-400">Fixed amount paid to each upline when a member in their team completes the full fee. Level 1 is the direct sponsor. Set a level to 0 to switch it off.</p>
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    @for ($lvl = 1; $lvl <= $levelCount; $lvl++)
                         <div>
-                            <x-input-label :for="'commission_level_'.$lvl" :value="$label" />
+                            <x-input-label :for="'commission_level_'.$lvl" :value="$lvl === 1 ? 'Level 1 (direct)' : 'Level '.$lvl" />
                             <div class="relative">
                                 <span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-ink-400">$</span>
-                                <x-text-input :id="'commission_level_'.$lvl" :name="'commission_level_'.$lvl" type="number" step="0.01" min="0" :value="old('commission_level_'.$lvl, $s['commission_level_'.$lvl])" class="money pl-7" required />
+                                <x-text-input :id="'commission_level_'.$lvl" :name="'commission_level_'.$lvl" type="number" step="0.01" min="0" data-level-amount
+                                              :value="old('commission_level_'.$lvl, $s['commission_level_'.$lvl] ?? 0)" class="money pl-7" required />
                             </div>
                             <x-input-error :messages="$errors->get('commission_level_'.$lvl)" />
                         </div>
-                    @endforeach
+                    @endfor
+                </div>
+                <div x-data="{ sum: 0, total() { let t = 0; $el.closest('form').querySelectorAll('[data-level-amount]').forEach(i => t += parseFloat(i.value) || 0); return t; } }"
+                     x-init="sum = total(); $el.closest('form').addEventListener('input', () => sum = total())"
+                     class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-800/40 px-4 py-3 text-sm">
+                    <span class="text-ink-400">Total paid out per full-fee member</span>
+                    <span class="money font-semibold text-gold" x-text="'$' + sum.toFixed(2)">${{ number_format(array_sum(\App\Models\Setting::commissionLevels()), 2) }}</span>
                 </div>
                 <label class="flex items-start gap-3 text-sm">
                     <input type="checkbox" name="upline_must_be_full" value="1" @checked(old('upline_must_be_full', filter_var($s['upline_must_be_full'], FILTER_VALIDATE_BOOLEAN)))

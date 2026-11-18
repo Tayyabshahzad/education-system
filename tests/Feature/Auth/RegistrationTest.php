@@ -132,4 +132,16 @@ class RegistrationTest extends TestCase
         $this->post('/register', $this->payload(['joining_amount' => 10]))->assertSessionHasErrors('joining_amount');
         $this->post('/register', $this->payload(['joining_amount' => 500]))->assertSessionHasErrors('joining_amount');
     }
+
+    public function test_register_page_offers_a_custom_amount_and_accepts_it(): void
+    {
+        $this->get('/register?ref='.$this->sponsor->referral_code)->assertOk()
+            ->assertSee('Joining Fee')->assertSee('Full Training Package')->assertSee('Custom Amount');
+
+        $this->post('/register', $this->payload(['joining_amount' => 120]))->assertSessionHasNoErrors();
+
+        $user = User::firstWhere('email', 'test@example.com');
+        $this->assertEquals(120, $user->joining_amount);
+        $this->assertEquals(120, Payment::sole()->amount);
+    }
 }

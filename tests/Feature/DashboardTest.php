@@ -64,7 +64,7 @@ class DashboardTest extends TestCase
             ->forceFill(['status' => 'approved', 'reviewed_at' => '2026-11-05 10:00:00'])->save();
         Withdrawal::create(['user_id' => $user->id, 'amount' => 40, 'method' => 'Bank', 'account_title' => 'A', 'account_number' => '1']); // pending: not counted
 
-        $chart = app(ReportService::class)->personalChart($user, $user->downlineByLevel(3));
+        $chart = app(ReportService::class)->personalChart($user, $user->downlineByLevel());
         $values = fn (string $metric) => array_column($chart['metrics'][$metric]['values'], 'value');
 
         $this->assertCount(12, $chart['months']);

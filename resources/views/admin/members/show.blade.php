@@ -98,7 +98,7 @@
             <div class="grid gap-4 sm:grid-cols-3">
                 <x-stat label="Paid" :value="'$'.number_format((float) $member->paid_amount, 2)" :tone="$member->isFullyPaid() ? 'gold' : 'default'" :hint="'Full: $'.number_format($fullFee, 2)" />
                 <x-stat label="Wallet" :value="'$'.number_format((float) $member->wallet_balance, 2)" tone="green" />
-                <x-stat label="Team (3 levels)" :value="collect($levels)->sum(fn ($l) => $l->count())" :hint="collect($levels)->map(fn ($l, $i) => 'L'.$i.': '.$l->count())->join(' · ')" />
+                <x-stat :label="'Team ('.count($levels).' levels)'" :value="collect($levels)->sum(fn ($l) => $l->count())" :hint="collect($levels)->map(fn ($l, $i) => 'L'.$i.': '.$l->count())->join(' · ')" />
             </div>
 
             <div class="card">

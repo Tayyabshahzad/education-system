@@ -34,19 +34,29 @@
         <x-input-error :messages="$errors->get('sponsor_code')" />
 
         {{-- Step 1: package --}}
-        <fieldset x-data="{ amount: {{ (float) old('joining_amount', $fullFee) }} }">
+        @php
+            // Which card starts selected: the fixed fees, or "custom" for any other amount (e.g. after a validation error).
+            $oldAmount = (float) old('joining_amount', $fullFee);
+            $startMode = $oldAmount == $fullFee ? 'full' : ($oldAmount == $minFee ? 'min' : 'custom');
+            $fixed = [
+                'min' => [$minFee, 'Joining Fee', 'Entry access. Top up to the full package anytime from your dashboard.'],
+                'full' => [$fullFee, 'Full Training Package', 'Live class batches and full academy access.'],
+            ];
+            $hasCustom = $maxFee > $minFee;
+        @endphp
+        <fieldset x-data="{ mode: @js($startMode), amount: {{ $oldAmount }}, custom: {{ $startMode === 'custom' ? $oldAmount : "''" }} }">
             <legend class="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-ink-950">1</span>
                 Choose your amount
             </legend>
-            <div class="grid gap-3 sm:grid-cols-2">
-                @foreach ([[$minFee, 'Joining Fee', 'Entry access. Top up to the full package anytime from your dashboard.'], [$fullFee, 'Full Training Package', 'Live class batches and full academy access.']] as [$value, $label, $text])
-                    <button type="button" @click="amount = {{ $value }}"
+            <div @class(['grid gap-3', 'sm:grid-cols-3' => $hasCustom, 'sm:grid-cols-2' => ! $hasCustom])>
+                @foreach ($fixed as $key => [$value, $label, $text])
+                    <button type="button" @click="mode = @js($key); amount = {{ $value }}"
                             class="h-full rounded-xl border p-4 text-left transition"
-                            :class="Number(amount) === {{ $value }} ? 'border-gold bg-gold/5 glow-gold' : 'border-ink-700 bg-ink-800/60 hover:border-ink-600'">
-                        <div class="flex items-start justify-between">
+                            :class="mode === @js($key) ? 'border-gold bg-gold/5 glow-gold' : 'border-ink-700 bg-ink-800/60 hover:border-ink-600'">
+                        <div class="flex items-start justify-between gap-2">
                             <span class="text-sm font-medium text-ink-200">{{ $label }}</span>
-                            @if ($value == $fullFee)
+                            @if ($key === 'full')
                                 <span class="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">Recommended</span>
                             @endif
                         </div>
@@ -54,19 +64,39 @@
                         <p class="mt-1 text-xs text-ink-400">{{ $text }}</p>
                     </button>
                 @endforeach
+
+                @if ($hasCustom)
+                    {{-- Custom: any amount between the joining fee and the maximum --}}
+                    <button type="button" @click="mode = 'custom'; amount = custom; $nextTick(() => $refs.customAmount.focus())"
+                            class="h-full rounded-xl border p-4 text-left transition"
+                            :class="mode === 'custom' ? 'border-gold bg-gold/5 glow-gold' : 'border-ink-700 bg-ink-800/60 hover:border-ink-600'">
+                        <span class="text-sm font-medium text-ink-200">Custom Amount</span>
+                        <div class="mt-2 flex min-h-[2.25rem] items-end font-display font-semibold text-ink-100"
+                             :class="mode === 'custom' && Number(custom) ? 'text-3xl' : 'text-lg text-ink-200'"
+                             x-text="mode === 'custom' && Number(custom) ? '$' + Number(custom).toLocaleString() : 'Your choice'">Your choice</div>
+                        <p class="mt-1 text-xs text-ink-400">Pay any amount from ${{ number_format($minFee) }} to ${{ number_format($maxFee) }}.</p>
+                    </button>
+                @endif
             </div>
-            @if ($maxFee != $minFee)
-                <div class="mt-3 flex items-center gap-3">
-                    <label for="joining_amount" class="shrink-0 text-xs text-ink-400">Or enter an amount</label>
-                    <div class="relative flex-1">
+
+            @if ($hasCustom)
+                <div x-show="mode === 'custom'" x-cloak class="mt-3">
+                    <x-input-label for="custom_amount" value="Enter your amount (USD)" />
+                    <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-ink-400">$</span>
-                        <x-text-input id="joining_amount" name="joining_amount" type="number" step="0.01" min="{{ $minFee }}" max="{{ $maxFee }}" x-model="amount" class="money pl-7" required />
+                        <x-text-input id="custom_amount" x-ref="customAmount" type="number" step="0.01" min="{{ $minFee }}" max="{{ $maxFee }}"
+                                      x-model="custom" @input="amount = custom" ::required="mode === 'custom'" class="money pl-7" placeholder="{{ number_format(($minFee + $fullFee) / 2, 0, '.', '') }}" />
                     </div>
+                    <p class="field-help">Between ${{ number_format($minFee, 2) }} and ${{ number_format($maxFee, 2) }}.</p>
                 </div>
-            @else
-                <input type="hidden" name="joining_amount" :value="amount">
             @endif
-            <p class="field-help">Between ${{ number_format($minFee, 2) }} and ${{ number_format($maxFee, 2) }}.</p>
+
+            {{-- The one value the server receives, whichever card is chosen --}}
+            <input type="hidden" name="joining_amount" :value="amount">
+
+            <p x-show="Number(amount) > 0 && Number(amount) < {{ $fullFee }}" x-cloak class="mt-3 rounded-lg bg-gold/10 px-3 py-2 text-xs text-gold">
+                Below ${{ number_format($fullFee, 0) }}: live classes and your sponsor's commission start once you top up to ${{ number_format($fullFee, 0) }} from your dashboard.
+            </p>
             <x-input-error :messages="$errors->get('joining_amount')" />
         </fieldset>
 

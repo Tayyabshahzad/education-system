@@ -43,11 +43,41 @@ class Setting extends Model
         Cache::forget(self::CACHE_KEY);
     }
 
+    /**
+     * Writes every default from config/education.php that is not in the settings table
+     * yet (e.g. commission_level_4..7 after levels were added). Values an admin already
+     * saved are never touched. Run by a migration, so `php artisan migrate` on deploy is enough.
+     *
+     * @return list<string> the keys that were added
+     */
+    public static function insertMissingDefaults(): array
+    {
+        $existing = static::query()->pluck('key')->all();
+        $added = [];
+
+        foreach (config('education.defaults') as $key => $value) {
+            if (! in_array($key, $existing, true)) {
+                static::query()->create(['key' => $key, 'value' => is_bool($value) ? (int) $value : $value]);
+                $added[] = $key;
+            }
+        }
+
+        Cache::forget(self::CACHE_KEY);
+
+        return $added;
+    }
+
+    /** Number of upline levels that earn commission (and team depth shown everywhere). */
+    public static function levelCount(): int
+    {
+        return (int) config('education.commission_levels');
+    }
+
     /** USD commission per level, keyed 1..N. */
     public static function commissionLevels(): array
     {
         $levels = [];
-        for ($i = 1; $i <= config('education.commission_levels'); $i++) {
+        for ($i = 1; $i <= static::levelCount(); $i++) {
             $levels[$i] = static::money("commission_level_{$i}");
         }
 

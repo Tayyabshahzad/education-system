@@ -22,7 +22,7 @@ class TeamController extends Controller
         $user = $request->user();
 
         return view('member.team.index', [
-            'levels' => $user->downlineByLevel(3),
+            'levels' => $user->downlineByLevel(),
             'commissionLevels' => Setting::commissionLevels(),
             'fullFee' => Setting::money('full_fee'),
         ]);

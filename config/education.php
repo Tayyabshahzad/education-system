@@ -19,9 +19,14 @@ return [
         'max_fee' => 200,
 
         // Fixed USD commission per upline level (level 1 = direct sponsor).
+        // Admins change these from Admin > Settings.
         'commission_level_1' => 30,
         'commission_level_2' => 20,
         'commission_level_3' => 10,
+        'commission_level_4' => 5,
+        'commission_level_5' => 5,
+        'commission_level_6' => 5,
+        'commission_level_7' => 5,
 
         // When true, an upline must be fully paid themselves to receive commission.
         'upline_must_be_full' => false,
@@ -34,5 +39,7 @@ return [
         'withdrawal_methods' => 'Bank Transfer, Easypaisa, JazzCash, USDT (TRC20)',
     ],
 
-    'commission_levels' => 3,
+    // How many upline levels earn commission, and how deep "My Team" and the
+    // dashboards look. Every level needs a commission_level_N default above.
+    'commission_levels' => 7,
 ];

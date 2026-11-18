@@ -52,7 +52,7 @@
                 :hint="$pendingWithdrawal > 0 ? '$'.number_format($pendingWithdrawal, 2).' on hold for withdrawal' : 'Available to withdraw'" />
         <x-stat label="Total earnings" :value="'$'.number_format($totalEarned, 2)" tone="green" icon="chart" hint="All-time referral commission" />
         <x-stat label="Withdrawn" :value="'$'.number_format($withdrawn, 2)" icon="arrow-up" hint="Paid out to you" />
-        <x-stat label="Team size" :value="number_format($teamTotal)" icon="users" hint="Across 3 levels" />
+        <x-stat label="Team size" :value="number_format($teamTotal)" icon="users" :hint="'Across '.count($levels).' levels'" />
     </div>
 
     <div class="mt-6 grid gap-6 xl:grid-cols-3">
@@ -86,7 +86,7 @@
     </div>
 
     {{-- Earnings over time --}}
-    @include('partials.metrics-chart', ['chart' => $personalChart, 'title' => 'My performance', 'subtitle' => 'People who joined your 3-level team, commission you earned and money you withdrew', 'class' => 'mt-6'])
+    @include('partials.metrics-chart', ['chart' => $personalChart, 'title' => 'My performance', 'subtitle' => 'People who joined your '.count($levels).'-level team, commission you earned and money you withdrew', 'class' => 'mt-6'])
 
     {{-- Recent activity --}}
     <div class="card mt-6">

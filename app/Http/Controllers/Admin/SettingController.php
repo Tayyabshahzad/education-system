@@ -21,9 +21,7 @@ class SettingController extends Controller
             'min_join_fee' => ['required', 'numeric', 'min:1'],
             'full_fee' => ['required', 'numeric', 'gte:min_join_fee'],
             'max_fee' => ['required', 'numeric', 'gte:full_fee'],
-            'commission_level_1' => ['required', 'numeric', 'min:0'],
-            'commission_level_2' => ['required', 'numeric', 'min:0'],
-            'commission_level_3' => ['required', 'numeric', 'min:0'],
+            ...$this->commissionRules(),
             'min_withdrawal' => ['required', 'numeric', 'min:1'],
             'withdrawal_methods' => ['required', 'string', 'max:500'],
             'payment_instructions' => ['nullable', 'string', 'max:2000'],
@@ -34,13 +32,24 @@ class SettingController extends Controller
 
         $data['upline_must_be_full'] = $request->boolean('upline_must_be_full');
 
-        $totalCommission = $data['commission_level_1'] + $data['commission_level_2'] + $data['commission_level_3'];
+        $totalCommission = collect(array_keys($this->commissionRules()))->sum(fn ($key) => (float) $data[$key]);
         if ($totalCommission > $data['full_fee']) {
-            return back()->withInput()->withErrors(['commission_level_1' => 'Total commission ($'.$totalCommission.') cannot exceed the full fee.']);
+            return back()->withInput()->withErrors(['commission_level_1' => 'Total commission of all levels ($'.$totalCommission.') cannot exceed the full fee.']);
         }
 
         Setting::setMany($data);
 
         return back()->with('success', 'Settings saved. New values apply to payments approved from now on.');
+    }
+
+    /** One required amount per commission level (commission_level_1 … commission_level_N). */
+    private function commissionRules(): array
+    {
+        $rules = [];
+        foreach (array_keys(Setting::commissionLevels()) as $level) {
+            $rules["commission_level_{$level}"] = ['required', 'numeric', 'min:0'];
+        }
+
+        return $rules;
     }
 }

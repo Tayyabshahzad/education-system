@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Fixed-amount, 3-level referral commission.
+ * Fixed-amount referral commission over Setting::levelCount() upline levels (7 by default).
  *
  * Uplines are paid exactly once per member, at the moment that member's approved
  * paid total first reaches the full fee. A member who has paid less earns nobody anything.

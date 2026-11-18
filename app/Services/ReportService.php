@@ -35,7 +35,7 @@ class ReportService
      | Dashboard charts
      * ------------------------------------------------------------------ */
 
-    /** A user's own figures: their 3-level team joining, commission earned and money withdrawn. */
+    /** A user's own figures: their whole commission-level team joining, commission earned and money withdrawn. */
     public function personalChart(User $user, array $levels, int $months = 12): array
     {
         $start = $this->start($months);

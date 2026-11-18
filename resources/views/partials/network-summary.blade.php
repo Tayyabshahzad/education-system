@@ -24,4 +24,4 @@
     </div>
 </div>
 
-@include('partials.metrics-chart', ['chart' => $personalChart, 'title' => 'My performance', 'subtitle' => 'People who joined your 3-level team, commission you earned and money you withdrew', 'class' => 'mt-6'])
+@include('partials.metrics-chart', ['chart' => $personalChart, 'title' => 'My performance', 'subtitle' => 'People who joined your '.count($levels).'-level team, commission you earned and money you withdrew', 'class' => 'mt-6'])

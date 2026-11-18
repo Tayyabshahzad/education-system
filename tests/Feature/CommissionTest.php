@@ -20,19 +20,24 @@ class CommissionTest extends TestCase
         $this->admin = $this->superAdmin();
     }
 
-    /** Builds L4 -> L3 -> L2 -> L1 -> new member, uplines active and fully paid. */
-    private function chain(): array
+    /**
+     * Builds L8 -> L7 -> … -> L1 -> new member, uplines active and fully paid.
+     *
+     * @return array{0: User, 1: User, 2: User, 3: User, 4: User, 5: User, 6: User, 7: User, 8: User}
+     */
+    private function chain(int $uplines = 8): array
     {
-        $l4 = $this->member();
-        $l3 = $this->member(sponsor: $l4);
-        $l2 = $this->member(sponsor: $l3);
-        $l1 = $this->member(sponsor: $l2);
-        foreach ([$l4, $l3, $l2, $l1] as $u) {
-            $u->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+        $chain = [];
+        $sponsor = null;
+        for ($level = $uplines; $level >= 1; $level--) {
+            $sponsor = $this->member(sponsor: $sponsor);
+            $sponsor->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+            $chain[$level] = $sponsor;
         }
-        $new = $this->member(sponsor: $l1);
+        $chain[0] = $this->member(sponsor: $sponsor);
+        ksort($chain);
 
-        return [$new, $l1, $l2, $l3, $l4];
+        return $chain;
     }
 
     private function pay(User $member, float $amount): void
@@ -40,18 +45,33 @@ class CommissionTest extends TestCase
         app(PaymentService::class)->recordReceived($member->fresh(), $amount, $this->admin);
     }
 
-    public function test_full_payment_pays_30_20_10_to_three_upline_levels_only(): void
+    public function test_full_payment_pays_all_seven_upline_levels_only(): void
     {
-        [$new, $l1, $l2, $l3, $l4] = $this->chain();
+        $chain = $this->chain();
+        $new = $chain[0];
 
         $this->pay($new, 200);
 
-        $this->assertEquals(30, $l1->fresh()->wallet_balance);
-        $this->assertEquals(20, $l2->fresh()->wallet_balance);
-        $this->assertEquals(10, $l3->fresh()->wallet_balance);
-        $this->assertEquals(0, $l4->fresh()->wallet_balance, 'Level 4 must not earn');
+        $expected = [1 => 30, 2 => 20, 3 => 10, 4 => 5, 5 => 5, 6 => 5, 7 => 5];
+        foreach ($expected as $level => $amount) {
+            $this->assertEquals($amount, $chain[$level]->fresh()->wallet_balance, "Level {$level} earns \${$amount}");
+            $this->assertSame($level, $chain[$level]->walletTransactions()->value('level'));
+        }
+        $this->assertEquals(0, $chain[8]->fresh()->wallet_balance, 'Level 8 must not earn');
         $this->assertNotNull($new->fresh()->commission_released_at);
         $this->assertSame('active', $new->fresh()->status);
+    }
+
+    public function test_a_level_set_to_zero_is_skipped_but_higher_levels_still_earn(): void
+    {
+        Setting::setMany(['commission_level_5' => 0]);
+        $chain = $this->chain();
+
+        $this->pay($chain[0], 200);
+
+        $this->assertEquals(0, $chain[5]->fresh()->wallet_balance);
+        $this->assertEquals(5, $chain[6]->fresh()->wallet_balance);
+        $this->assertEquals(5, $chain[7]->fresh()->wallet_balance);
     }
 
     public function test_payment_below_full_fee_pays_no_commission(): void
@@ -151,5 +171,49 @@ class CommissionTest extends TestCase
             $this->pay($direct, 200);
             $this->assertEquals(30, $sponsor->fresh()->wallet_balance, 'Direct sponsor earns level 1');
         }
+    }
+
+    public function test_commission_amounts_for_all_seven_levels_are_stored_in_the_database(): void
+    {
+        foreach ([1 => 30, 2 => 20, 3 => 10, 4 => 5, 5 => 5, 6 => 5, 7 => 5] as $level => $amount) {
+            $this->assertDatabaseHas('settings', ['key' => "commission_level_{$level}", 'value' => $amount]);
+        }
+
+        // Re-running never overwrites what an admin saved; it only adds missing keys.
+        Setting::setMany(['commission_level_4' => 12]);
+        Setting::query()->where('key', 'commission_level_7')->delete();
+        $this->assertSame(['commission_level_7'], Setting::insertMissingDefaults());
+        $this->assertEquals(12, Setting::money('commission_level_4'));
+        $this->assertEquals(5, Setting::money('commission_level_7'));
+    }
+
+    public function test_admin_settings_page_edits_all_seven_levels(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.settings.edit'))->assertOk()
+            ->assertSee('Referral commission (7 levels)')
+            ->assertSee('name="commission_level_7"', false);
+
+        $amounts = [1 => 40, 2 => 20, 3 => 10, 4 => 8, 5 => 6, 6 => 4, 7 => 2];
+        $payload = ['min_join_fee' => 25, 'full_fee' => 200, 'max_fee' => 200, 'min_withdrawal' => 10, 'withdrawal_methods' => 'Bank'];
+        foreach ($amounts as $level => $amount) {
+            $payload["commission_level_{$level}"] = $amount;
+        }
+        $this->actingAs($this->admin)->put(route('admin.settings.update'), $payload)->assertSessionHasNoErrors();
+        $this->assertSame([1 => 40.0, 2 => 20.0, 3 => 10.0, 4 => 8.0, 5 => 6.0, 6 => 4.0, 7 => 2.0], Setting::commissionLevels());
+
+        // All seven levels together may not exceed the full fee.
+        $this->actingAs($this->admin)->put(route('admin.settings.update'), ['commission_level_7' => 150] + $payload)
+            ->assertSessionHasErrors('commission_level_1');
+        unset($payload['commission_level_6']);
+        $this->actingAs($this->admin)->put(route('admin.settings.update'), $payload)->assertSessionHasErrors('commission_level_6');
+    }
+
+    public function test_team_page_shows_seven_levels(): void
+    {
+        $chain = $this->chain();
+
+        $this->actingAs($chain[8])->get(route('team.index'))->assertOk()
+            ->assertSee('Level 7')->assertDontSee('Level 8')
+            ->assertSee($chain[1]->username); // 7 levels below L8
     }
 }

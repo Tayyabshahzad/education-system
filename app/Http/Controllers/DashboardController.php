@@ -38,7 +38,7 @@ class DashboardController extends Controller
     private function network(User $user): array
     {
         $commissions = $user->walletTransactions()->where('type', 'commission');
-        $levels = $user->downlineByLevel(3);
+        $levels = $user->downlineByLevel();
 
         return [
             'refUser' => $user,
@@ -53,7 +53,7 @@ class DashboardController extends Controller
 
     private function member(User $user): View
     {
-        $levels = $user->downlineByLevel(3);
+        $levels = $user->downlineByLevel();
         $commissions = $user->walletTransactions()->where('type', 'commission');
 
         return view('member.dashboard', [

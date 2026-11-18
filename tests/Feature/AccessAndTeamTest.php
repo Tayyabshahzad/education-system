@@ -334,6 +334,7 @@ class AccessAndTeamTest extends TestCase
     {
         $admin = $this->superAdmin();
         $base = ['commission_level_1' => 30, 'commission_level_2' => 20, 'commission_level_3' => 10,
+            'commission_level_4' => 5, 'commission_level_5' => 5, 'commission_level_6' => 5, 'commission_level_7' => 5,
             'min_withdrawal' => 10, 'withdrawal_methods' => 'Bank'];
 
         $this->actingAs($admin)->put(route('admin.settings.update'), $base + ['min_join_fee' => 50, 'full_fee' => 40, 'max_fee' => 100])

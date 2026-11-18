@@ -110,9 +110,17 @@ php artisan app:create-super-admin     # asks name, email, password
 sudo chown -R ubuntu:www-data storage bootstrap/cache
 sudo chmod -R ug+rwX storage bootstrap/cache
 php artisan config:cache
-php artisan route:cache
 php artisan view:cache
 ```
+
+> **Do not run `php artisan route:cache` on this server.** With cached routes,
+> Laravel strips the trailing slash from `/education-system/` before matching, which
+> breaks the sub-folder base URL and the app's home page returns
+> "405 Method Not Allowed". Without the route cache it works; the speed difference
+> is negligible for this app. If it was run by mistake: `php artisan route:clear`.
+>
+> Run `artisan` commands as `ubuntu`, never with `sudo` — root-owned files in
+> `storage/` or `.env` cause "Permission denied" / 500 errors.
 
 Uploaded screenshots and avatars are stored in `storage/app/private` (not public)
 and served through the app, so no `storage:link` is needed.
@@ -209,7 +217,7 @@ git pull
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 php artisan db:seed --class=RolesAndPermissionsSeeder --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan route:clear && php artisan config:cache && php artisan view:cache   # never route:cache (see step 5)
 php artisan up
 ```
 

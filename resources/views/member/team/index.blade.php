@@ -1,4 +1,4 @@
-<x-app-layout title="My Team" subtitle="Members you referred directly (level 1) and the members they brought in (levels 2 and 3).">
+<x-app-layout title="My Team" :subtitle="'Members you referred directly (level 1) and everyone they brought in, down to level '.count($levels).'.'">
     <x-slot:actions>
         <a href="{{ route('team.tree') }}" class="btn btn-secondary btn-sm hidden sm:inline-flex"><x-icon name="tree" class="h-4 w-4" /> Tree view</a>
         <a href="{{ route('team.create') }}" class="btn btn-primary btn-sm"><x-icon name="user-plus" class="h-4 w-4" /> Register member</a>
