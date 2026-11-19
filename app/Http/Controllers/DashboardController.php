@@ -46,6 +46,9 @@ class DashboardController extends Controller
             'totalEarned' => (float) (clone $commissions)->sum('amount'),
             'earningsByLevel' => (clone $commissions)->selectRaw('level, SUM(amount) as total')->groupBy('level')->pluck('total', 'level'),
             'commissionLevels' => Setting::commissionLevels(),
+            'levelStatus' => $user->commissionLevelStatus(),
+            'qualifiedDirects' => $user->qualifiedDirectCount(),
+            'nextUnlock' => $user->nextCommissionUnlock(),
             'fullFee' => Setting::money('full_fee'),
             'personalChart' => $this->reports->personalChart($user, $levels),
         ];
@@ -68,6 +71,9 @@ class DashboardController extends Controller
             'batches' => $user->batches()->with('teacher:id,name')->get(),
             'fullFee' => Setting::money('full_fee'),
             'commissionLevels' => Setting::commissionLevels(),
+            'levelStatus' => $user->commissionLevelStatus(),
+            'qualifiedDirects' => $user->qualifiedDirectCount(),
+            'nextUnlock' => $user->nextCommissionUnlock(),
             'personalChart' => $this->reports->personalChart($user, $levels),
         ]);
     }

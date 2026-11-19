@@ -241,6 +241,93 @@ class User extends Authenticatable
         return $levels;
     }
 
+    /**
+     * Directs who count for the 7x7 rule: active directs, i.e. their joining payment was
+     * approved (any amount, e.g. $25). Pending sign-ups that never paid and blocked
+     * accounts don't count. (Commission itself still only flows from full-fee members.)
+     */
+    public function qualifiedDirectCount(): int
+    {
+        return $this->referrals()->where('status', 'active')->count();
+    }
+
+    /** Commission waiting for this user under the 7x7 rule (paid once enough directs). */
+    public function heldCommissions(): HasMany
+    {
+        return $this->hasMany(HeldCommission::class);
+    }
+
+    /**
+     * 7x7 status per commission level, for display:
+     * [level => ['open' => bool, 'needs' => int, 'slots' => ?int, 'used' => int,
+     *            'waiting' => int, 'waitingAmount' => float]].
+     * Level 1 is always open with no limit (slots = null).
+     */
+    public function commissionLevelStatus(): array
+    {
+        $directs = $this->qualifiedDirectCount();
+        $used = $this->walletTransactions()->where('type', 'commission')
+            ->selectRaw('level, COUNT(*) as c')->groupBy('level')->pluck('c', 'level');
+        $waiting = $this->heldCommissions()->waiting()
+            ->selectRaw('level, COUNT(*) as c, SUM(amount) as total')->groupBy('level')->get()->keyBy('level');
+
+        $status = [];
+        foreach (array_keys(Setting::commissionLevels()) as $level) {
+            $status[$level] = [
+                'open' => $level === 1 || $directs >= $level,
+                'needs' => $level === 1 ? 1 : $level,
+                'slots' => null, // an open level pays every full-fee member on it (no limit)
+                'used' => (int) ($used[$level] ?? 0),
+                'waiting' => (int) ($waiting[$level]->c ?? 0),
+                'waitingAmount' => round((float) ($waiting[$level]->total ?? 0), 2),
+            ];
+        }
+
+        return $status;
+    }
+
+    /**
+     * For the dashboard alert: how much commission is waiting, and the smallest number of
+     * extra active directs that would release some of it right away (oldest first).
+     *
+     * @return array{total: float, waitingCount: int, directsNeeded: int, releaseAmount: float, releaseCount: int}|null
+     */
+    public function nextCommissionUnlock(): ?array
+    {
+        $held = $this->heldCommissions()->waiting()->orderBy('id')->get(['level', 'amount']);
+        if ($held->isEmpty()) {
+            return null;
+        }
+
+        $directs = $this->qualifiedDirectCount();
+        $byLevel = $held->groupBy('level');
+
+        // Try 1, 2, 3 … more directs until a level with waiting commission would open
+        // (an open level releases everything waiting on it).
+        for ($extra = 1; $extra <= 100; $extra++) {
+            $wouldHave = $directs + $extra;
+            $amount = 0.0;
+            $count = 0;
+            foreach ($byLevel as $level => $items) {
+                if ($wouldHave >= $level) {
+                    $amount += (float) $items->sum('amount');
+                    $count += $items->count();
+                }
+            }
+            if ($count > 0) {
+                return [
+                    'total' => round((float) $held->sum('amount'), 2),
+                    'waitingCount' => $held->count(),
+                    'directsNeeded' => $extra,
+                    'releaseAmount' => round($amount, 2),
+                    'releaseCount' => $count,
+                ];
+            }
+        }
+
+        return null;
+    }
+
     /** True when $other sits anywhere below this user. */
     public function hasInDownline(User $other): bool
     {

@@ -22,6 +22,9 @@
         </div>
     </div>
 
+    {{-- 7x7: commission waiting to be unlocked (always visible, motivates bringing directs) --}}
+    @include('partials.waiting-commission-alert', ['refUser' => $user])
+
     {{-- Payment call-to-action --}}
     @if ($user->status === 'pending' && ! $pendingPayment)
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gold/30 bg-gold/5 p-5">

@@ -126,12 +126,20 @@ class PaymentService
 
         $member = User::whereKey($payment->user_id)->lockForUpdate()->firstOrFail();
         $member->paid_amount = round((float) $member->paid_amount + (float) $payment->amount, 2);
-        if ($member->status === 'pending') {
+        $becameActive = $member->status === 'pending';
+        if ($becameActive) {
             $member->status = 'active';
         }
         $member->save();
 
-        app(CommissionService::class)->releaseIfQualified($member, $payment);
+        $commission = app(CommissionService::class);
+        $commission->releaseIfQualified($member, $payment);
+
+        // 7x7: a newly active member is now one more direct for their sponsor, which may
+        // unlock the sponsor's waiting commission.
+        if ($becameActive) {
+            $commission->releaseHeld($member->sponsor);
+        }
     }
 
     private function assertPending(Payment $payment): void

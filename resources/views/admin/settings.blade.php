@@ -43,6 +43,11 @@
                  }"
                  x-init="read(); $el.closest('form').addEventListener('input', () => read())">
                 <p class="text-sm text-ink-400">Each upline earns this <strong class="text-ink-200">percentage of what the member paid</strong> when that member completes the full fee. Level 1 is the direct sponsor. Set a level to 0 to switch it off.</p>
+                <p class="rounded-lg border border-ink-700 bg-ink-800/40 px-3 py-2 text-xs text-ink-400">
+                    <strong class="text-ink-200">7x7 rule:</strong> level 1 always pays. Level N (2–{{ $levelCount }}) opens once the upline has at least N active directs
+                    (joining payment approved), and then pays for every full-fee member on that level. Commission from a level that isn't open yet waits,
+                    and is paid automatically (at the amount it had then) as soon as the upline has enough active directs.
+                </p>
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     @for ($lvl = 1; $lvl <= $levelCount; $lvl++)
                         @php $field = 'commission_level_'.$lvl; @endphp

@@ -59,6 +59,9 @@ class MemberController extends Controller
             'member' => $member->load(['sponsor', 'batches.teacher']),
             'levels' => $member->downlineByLevel(),
             'commissionRates' => Setting::commissionLevels(),
+            'levelStatus' => $member->commissionLevelStatus(),
+            'heldCommissions' => $member->heldCommissions()->waiting()->with('fromUser:id,name,username')->orderBy('id')->get(),
+            'qualifiedDirects' => $member->qualifiedDirectCount(),
             'commissionByLevel' => (clone $commissions)
                 ->selectRaw('level, COUNT(*) as items, SUM(amount) as total, MIN(created_at) as first_at, MAX(created_at) as last_at')
                 ->groupBy('level')
@@ -130,8 +133,18 @@ class MemberController extends Controller
             $locked->status = $data['status'];
             $locked->save();
 
+            $commission = app(CommissionService::class);
             // A fully-paid member whose commission was held (e.g. blocked at approval) releases it now.
-            return app(CommissionService::class)->releaseIfQualified($locked);
+            $released = $commission->releaseIfQualified($locked);
+
+            if ($locked->status === 'active') {
+                // 7x7: an active member counts again as their sponsor's direct, and may
+                // themselves have commission waiting — pay whatever has become unlocked.
+                $commission->releaseHeld($locked->sponsor);
+                $commission->releaseHeld($locked);
+            }
+
+            return $released;
         });
 
         return back()->with('success', "{$member->username} is now {$data['status']}.".($released ? ' Upline commission has been released.' : ''));

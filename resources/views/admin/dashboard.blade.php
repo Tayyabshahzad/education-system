@@ -1,6 +1,8 @@
 <x-app-layout title="Admin Dashboard">
     @php $u = auth()->user(); @endphp
 
+    @include('partials.waiting-commission-alert')
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat label="Members" :value="number_format($stats['members'])" icon="users" :hint="$stats['active'].' active · '.$stats['pendingMembers'].' pending'" />
         <x-stat label="Full package members" :value="number_format($stats['fullyPaid'])" tone="gold" icon="academic" :hint="$stats['batches'].' class batches'" />

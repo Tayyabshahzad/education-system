@@ -25,22 +25,40 @@ class CommissionTest extends TestCase
 
     /**
      * Builds L8 -> L7 -> … -> L1 -> new member, uplines active and fully paid.
+     * By default every upline also gets enough full-fee directs ($directs in total) that
+     * all 7 levels are open under the 7x7 rule; pass 1 for a bare single-line chain.
      *
      * @return array{0: User, 1: User, 2: User, 3: User, 4: User, 5: User, 6: User, 7: User, 8: User}
      */
-    private function chain(int $uplines = 8): array
+    private function chain(int $uplines = 8, int $directs = 7): array
     {
         $chain = [];
         $sponsor = null;
         for ($level = $uplines; $level >= 1; $level--) {
-            $sponsor = $this->member(sponsor: $sponsor);
-            $sponsor->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+            $sponsor = $this->fullMember($sponsor);
+            $this->giveDirects($sponsor, $directs - 1); // the next chain member is the other direct
             $chain[$level] = $sponsor;
         }
         $chain[0] = $this->member(sponsor: $sponsor);
         ksort($chain);
 
         return $chain;
+    }
+
+    /** An active member who already paid the full fee (their own commission long released). */
+    private function fullMember(?User $sponsor = null, array $attributes = []): User
+    {
+        $user = $this->member($attributes, $sponsor);
+        $user->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+
+        return $user;
+    }
+
+    private function giveDirects(User $sponsor, int $count): void
+    {
+        for ($i = 0; $i < $count; $i++) {
+            $this->fullMember($sponsor);
+        }
     }
 
     private function pay(User $member, float $amount): void
@@ -162,8 +180,8 @@ class CommissionTest extends TestCase
         // staff never pay a fee, so that rule must not block them.
         Setting::setMany(['upline_must_be_full' => true]);
         $staff = $this->staff();
-        $l1 = $this->member(sponsor: $staff);
-        $l1->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+        $l1 = $this->fullMember($staff);
+        $this->giveDirects($staff, 1); // 2 full-fee directs open level 2 for the staff (7x7 rule)
         $new = $this->member(sponsor: $l1);
 
         $this->pay($new, 200);
@@ -302,5 +320,302 @@ class CommissionTest extends TestCase
             ->assertSee($chain[0]->username)
             ->assertSee($grandchild->username)
             ->assertSee(now()->format('d M Y'));
+    }
+
+    /* ---------- 7x7 rule ---------- */
+
+    public function test_7x7_tayyab_example_level_n_needs_n_full_fee_directs(): void
+    {
+        // Tayyab -> Asim, Zahoor (2 full-fee directs). Asim -> Qasim -> Mavia.
+        $tayyab = $this->fullMember(attributes: ['name' => 'Tayyab']);
+        $asim = $this->member(['name' => 'Asim'], $tayyab);
+        $zahoor = $this->member(['name' => 'Zahoor'], $tayyab);
+        $this->pay($asim, 200);
+        $this->pay($zahoor, 200);
+        $this->assertEquals(60, $tayyab->fresh()->wallet_balance, 'Level 1: 15% from each direct');
+
+        $qasim = $this->member(['name' => 'Qasim'], $asim);
+        $this->pay($qasim, 200);
+        $this->assertEquals(30, $asim->fresh()->wallet_balance, 'Asim: Qasim is his level 1');
+        $this->assertEquals(78, $tayyab->fresh()->wallet_balance, 'Tayyab has 2 directs, so level 2 (9%) is open');
+
+        $mavia = $this->member(['name' => 'Mavia'], $qasim);
+        $this->pay($mavia, 200);
+        $this->assertEquals(30, $qasim->fresh()->wallet_balance, 'Qasim: Mavia is his level 1');
+        $this->assertEquals(30, $asim->fresh()->wallet_balance, 'Asim has only 1 direct: level 2 closed');
+        $this->assertEquals(78, $tayyab->fresh()->wallet_balance, 'Mavia is Tayyab\'s level 3: needs 3 directs');
+        $this->assertSame(0, $tayyab->walletTransactions()->where('level', 3)->count());
+        // …so Mavia's 5% ($10) waits for Tayyab instead of being lost.
+        $held = $tayyab->heldCommissions()->waiting()->sole();
+        $this->assertSame([3, $mavia->id, '10.00'], [$held->level, $held->from_user_id, $held->amount]);
+
+        // Usman, a third full-fee direct, opens level 3: Tayyab gets Usman's $30 AND Mavia's waiting $10.
+        $usman = $this->member(['name' => 'Usman'], $tayyab);
+        $this->pay($usman, 200);
+        $this->assertEquals(118, $tayyab->fresh()->wallet_balance); // 78 + 30 + 10
+        $this->assertNotNull($held->fresh()->released_at);
+        $mavias = $tayyab->walletTransactions()->where('level', 3)->sole();
+        $this->assertSame($mavia->id, $mavias->from_user_id);
+        $this->assertStringContainsString('held since', $mavias->description);
+        $this->assertSame(0, $tayyab->heldCommissions()->waiting()->count());
+
+        // The next level-3 member pays straight away (3 directs = 3 slots on level 3).
+        $this->pay($this->member(sponsor: $qasim), 200);
+        $this->assertEquals(128, $tayyab->fresh()->wallet_balance);
+        $this->assertSame(2, $tayyab->walletTransactions()->where('level', 3)->count());
+    }
+
+    public function test_7x7_an_open_level_pays_every_full_fee_member_on_it(): void
+    {
+        // Admin -> Muhammad (1 direct). Muhammad brings 10 members who pay $200.
+        $muhammad = $this->member(['name' => 'Muhammad'], $this->admin);
+        $this->pay($muhammad, 25);
+        for ($i = 1; $i <= 10; $i++) {
+            $this->pay($this->member(sponsor: $muhammad), 200);
+        }
+        $this->assertEquals(300, $muhammad->fresh()->wallet_balance, 'Muhammad: 10 × 15%');
+        $this->assertEquals(0, $this->admin->fresh()->wallet_balance, 'Admin has 1 direct: level 2 closed');
+        $this->assertSame(10, $this->admin->heldCommissions()->waiting()->count());
+
+        // Admin brings a second direct: level 2 opens and ALL 10 waiting commissions are paid.
+        $newDirect = $this->member(sponsor: $this->admin);
+        $this->pay($newDirect, 25);
+        $this->assertEquals(180, $this->admin->fresh()->wallet_balance, '10 × 9%');
+        $this->assertSame(0, $this->admin->heldCommissions()->waiting()->count());
+
+        // Later members on level 2 — from Muhammad or from the new direct — pay straight away.
+        for ($i = 1; $i <= 3; $i++) {
+            $this->pay($this->member(sponsor: $muhammad), 200);
+        }
+        $this->pay($this->member(sponsor: $newDirect), 200);
+        $this->assertEquals(180 + 4 * 18, $this->admin->fresh()->wallet_balance);
+        $this->assertSame(14, $this->admin->walletTransactions()->where('level', 2)->count());
+    }
+
+    public function test_7x7_waiting_commission_is_paid_when_admin_reactivates_a_direct(): void
+    {
+        $ali = $this->fullMember();
+        $umer = $this->fullMember($ali);
+        $blocked = $this->fullMember($ali);
+        $blocked->forceFill(['status' => 'blocked'])->save(); // doesn't count while blocked
+
+        $this->pay($this->member(sponsor: $umer), 200);
+        $this->assertEquals(0, $ali->fresh()->wallet_balance);
+        $this->assertSame(1, $ali->heldCommissions()->waiting()->count());
+
+        $this->actingAs($this->admin)->patch(route('admin.members.status', $blocked), ['status' => 'active']);
+
+        $this->assertEquals(18, $ali->fresh()->wallet_balance, 'Second full-fee direct is active again: level 2 opens');
+        $this->assertSame(0, $ali->heldCommissions()->waiting()->count());
+    }
+
+    public function test_7x7_waiting_commission_keeps_its_original_amount_and_stays_until_unlocked(): void
+    {
+        $ali = $this->fullMember();
+        $umer = $this->fullMember($ali);
+        $this->pay($this->member(sponsor: $umer), 200); // Ali has 1 direct: level 2 waits ($18 at 9%)
+
+        Setting::setMany(['commission_level_2' => 5]); // later rate change doesn't touch waiting money
+        $this->pay($this->member(sponsor: $umer), 200);  // still 1 direct: waits ($10 at 5%)
+        $this->assertEquals(0, $ali->fresh()->wallet_balance);
+        $this->assertEquals(28, $ali->heldCommissions()->waiting()->sum('amount'));
+
+        $this->pay($this->member(sponsor: $ali), 200); // 2nd direct: 2 level-2 slots → both released
+        $this->assertEquals(30 + 18 + 10, $ali->fresh()->wallet_balance);
+
+        $this->actingAs($this->admin)->get(route('admin.members.show', $ali))->assertOk()->assertDontSee('Waiting (7x7)');
+    }
+
+    public function test_dashboard_and_admin_page_show_waiting_commission(): void
+    {
+        $ali = $this->fullMember();
+        $umer = $this->fullMember($ali);
+        $this->pay($this->member(['name' => 'Saleem Waits'], $umer), 200);
+
+        $this->actingAs($ali)->get(route('dashboard'))->assertOk()
+            ->assertSee('$18.00</strong> commission waiting', false)
+            ->assertSee('Bring 1 more active direct and')
+            ->assertSee('goes into your wallet right away')
+            ->assertSee('1 waiting');
+        $this->actingAs($this->admin)->get(route('admin.members.show', $ali))->assertOk()
+            ->assertSee('Waiting (7x7)')
+            ->assertSee('Saleem Waits')
+            ->assertSee('2 active directs (has 1)');
+    }
+
+    public function test_7x7_active_directs_count_even_below_full_fee_but_not_pending_or_blocked(): void
+    {
+        $ali = $this->fullMember();
+        $umer = $this->fullMember($ali);
+        $this->member(sponsor: $ali); // registered, never paid (pending): doesn't count
+        $blocked = $this->fullMember($ali);
+        $blocked->forceFill(['status' => 'blocked'])->save();
+
+        $this->assertSame(1, $ali->qualifiedDirectCount());
+        $this->pay($this->member(sponsor: $umer), 200);
+        $this->assertEquals(0, $ali->fresh()->wallet_balance, 'Only 1 active direct: level 2 closed, $18 waits');
+        $this->assertFalse($ali->commissionLevelStatus()[2]['open']);
+        $this->assertTrue($ali->commissionLevelStatus()[1]['open']);
+
+        // A new direct whose $25 joining fee is approved counts at once: level 2 opens, the $18 is released.
+        $this->pay($this->member(sponsor: $ali), 25);
+        $this->assertSame(2, $ali->qualifiedDirectCount());
+        $this->assertEquals(18, $ali->fresh()->wallet_balance, 'No level-1 commission from a $25 member, but level 2 unlocked');
+    }
+
+    public function test_7x7_live_admin_case(): void
+    {
+        // admin -> muhammad ($25) -> qaisar, abduljabbar, azrar ($200), aftab ($200), muhammadz, qazi, raja.
+        $muhammad = $this->member(['name' => 'Muhammad'], $this->admin);
+        $this->pay($muhammad, 25);
+        foreach (['Qaisar' => 25, 'Abduljabbar' => 0, 'Azrar' => 200, 'Aftab' => 200, 'MuhammadZ' => 25, 'Qazi' => 0, 'Raja' => 25] as $name => $paid) {
+            $m = $this->member(['name' => $name], $muhammad);
+            if ($paid) {
+                $this->pay($m, $paid);
+            }
+        }
+
+        $this->assertEquals(60, $muhammad->fresh()->wallet_balance, 'Muhammad: 15% from Azrar and Aftab only');
+        $this->assertEquals(0, $this->admin->fresh()->wallet_balance, 'Admin: nothing yet (1 active direct)');
+        $this->assertEquals(36, $this->admin->heldCommissions()->waiting()->sum('amount'), '9% + 9% waiting');
+
+        // Admin brings one more member who pays the $25 joining fee: 2 active directs, the 9% + 9% is paid.
+        $this->pay($this->member(sponsor: $this->admin), 25);
+        $this->assertEquals(36, $this->admin->fresh()->wallet_balance);
+
+        // Muhammad completes $200: admin gets Muhammad's level-1 15% too.
+        $this->pay($muhammad, 175);
+        $this->assertEquals(66, $this->admin->fresh()->wallet_balance);
+    }
+
+    public function test_dashboard_shows_which_levels_are_unlocked(): void
+    {
+        $ali = $this->fullMember();
+        $this->fullMember($ali);
+        $this->fullMember($ali);
+
+        $this->actingAs($ali)->get(route('dashboard'))->assertOk()
+            ->assertSee('2 active directs')
+            ->assertSee('Needs 3 directs');
+    }
+
+    public function test_next_unlock_tells_how_many_directs_release_how_much(): void
+    {
+        // Tayyab (1 direct: Asim). Asim brings Qasim and Hamza (level 2, $18 each, needs 2 directs);
+        // Qasim brings Mavia (level 3, $10, needs 3 directs).
+        $tayyab = $this->fullMember();
+        $asim = $this->fullMember($tayyab);
+        $qasim = $this->member(sponsor: $asim);
+        $this->pay($qasim, 200);
+        $this->pay($this->member(['name' => 'Hamza'], $asim), 200);
+        $this->pay($this->member(['name' => 'Mavia'], $qasim), 200);
+
+        $unlock = $tayyab->nextCommissionUnlock();
+        $this->assertSame(46.0, $unlock['total']);
+        $this->assertSame(3, $unlock['waitingCount']);
+        $this->assertSame(1, $unlock['directsNeeded'], 'One more direct opens level 2');
+        $this->assertSame(36.0, $unlock['releaseAmount'], 'Level 2 releases both $18; Mavia still needs a 3rd direct');
+
+        $this->actingAs($tayyab)->get(route('dashboard'))->assertOk()
+            ->assertSee('$46.00</strong> commission waiting', false)
+            ->assertSee('from 3 members in your team');
+
+        $this->pay($this->member(sponsor: $tayyab), 25); // 2nd direct
+        $unlock = $tayyab->fresh()->nextCommissionUnlock();
+        $this->assertSame(10.0, $unlock['total']);
+        $this->assertSame(1, $unlock['directsNeeded']);
+
+        // After the direct arrives everything is released and the banner disappears.
+        $this->pay($this->member(sponsor: $tayyab), 200);
+        $this->assertNull($tayyab->fresh()->nextCommissionUnlock());
+        $this->actingAs($tayyab->fresh())->get(route('dashboard'))->assertOk()->assertDontSee('commission waiting');
+    }
+
+    public function test_staff_and_admin_dashboards_show_the_waiting_banner_too(): void
+    {
+        $staff = $this->staff();
+        $direct = $this->fullMember($staff);
+        $this->pay($this->member(sponsor: $direct), 200); // staff has 1 direct: level 2 waits
+
+        $this->actingAs($staff)->get(route('dashboard'))->assertOk()
+            ->assertSee('commission waiting')
+            ->assertSee('Bring 1 more active direct');
+    }
+
+    public function test_super_admin_dashboard_shows_their_own_waiting_banner(): void
+    {
+        $direct = $this->fullMember($this->admin);
+        $this->pay($this->member(sponsor: $direct), 200); // admin has 1 direct: their level-2 $18 waits
+
+        $html = $this->actingAs($this->admin)->get(route('dashboard'))->assertOk()
+            ->assertSee('$18.00</strong> commission waiting', false)
+            ->assertSee('Bring 1 more active direct')
+            ->getContent();
+
+        // The banner is the first thing on the page, above the business stats.
+        $this->assertLessThan(strpos($html, 'Full package members'), strpos($html, 'commission waiting'));
+    }
+
+    public function test_apply_7x7_command_moves_old_commission_to_waiting_and_it_comes_back(): void
+    {
+        // Before the rule: admin (1 direct who paid only $25) got two level-2 commissions.
+        $muhammad = $this->member(sponsor: $this->admin);
+        $muhammad->forceFill(['status' => 'active', 'paid_amount' => 25])->save();
+        foreach (['aftab', 'azrar'] as $i => $name) {
+            $m = $this->member(['name' => $name], $muhammad);
+            $m->forceFill(['status' => 'active', 'paid_amount' => 200, 'commission_released_at' => now()])->save();
+            DB::transaction(fn () => app(WalletService::class)->credit($this->admin, 18, 'commission', 'old', null, $m, 2));
+        }
+        $this->assertEquals(36, $this->admin->fresh()->wallet_balance);
+
+        // Dry run changes nothing.
+        $this->artisan('app:apply-7x7')->expectsOutputToContain('waiting (needs 2 directs)')->assertExitCode(0);
+        $this->assertEquals(36, $this->admin->fresh()->wallet_balance);
+
+        $this->artisan('app:apply-7x7', ['--apply' => true])->assertExitCode(0);
+        $this->assertEquals(0, $this->admin->fresh()->wallet_balance);
+        $this->assertSame(0, $this->admin->walletTransactions()->count());
+        $this->assertEquals(36, $this->admin->heldCommissions()->waiting()->sum('amount'));
+        $this->artisan('app:apply-7x7')->expectsOutputToContain('Nothing to change')->assertExitCode(0);
+
+        // Muhammad tops up to the full fee and a second full-fee direct joins: level 2 opens, both come back.
+        $this->pay($muhammad, 175);
+        $this->assertEquals(30, $this->admin->fresh()->wallet_balance, 'Level 1 from Muhammad; level 2 still needs 2 directs');
+        $this->pay($this->member(sponsor: $this->admin), 200);
+        $this->assertEquals(30 + 30 + 36, $this->admin->fresh()->wallet_balance);
+        $this->assertSame(0, $this->admin->heldCommissions()->waiting()->count());
+    }
+
+    public function test_apply_7x7_leaves_open_levels_alone_and_moves_closed_ones(): void
+    {
+        // Ali has 2 directs and earlier got 3 level-2 and 1 level-3 commissions.
+        $ali = $this->fullMember();
+        $umer = $this->fullMember($ali);
+        $this->fullMember($ali);
+        foreach ([1, 2, 3] as $i) {
+            $m = $this->fullMember($umer);
+            DB::transaction(fn () => app(WalletService::class)->credit($ali, 18, 'commission', "L2 old {$i}", null, $m, 2));
+        }
+        $deep = $this->fullMember($m);
+        DB::transaction(fn () => app(WalletService::class)->credit($ali, 10, 'commission', 'L3 old', null, $deep, 3));
+
+        $this->artisan('app:apply-7x7', ['--apply' => true])->assertExitCode(0);
+
+        // Level 2 is open (2 directs): all three stay. Level 3 needs 3 directs: it waits.
+        $this->assertEquals(54, $ali->fresh()->wallet_balance);
+        $this->assertSame(['L2 old 1', 'L2 old 2', 'L2 old 3'], $ali->walletTransactions()->orderBy('id')->pluck('description')->all());
+        $this->assertSame([3], $ali->heldCommissions()->waiting()->pluck('level')->all());
+    }
+
+    public function test_apply_7x7_refuses_when_money_was_already_withdrawn(): void
+    {
+        $muhammad = $this->member(sponsor: $this->admin);
+        $m = $this->fullMember($muhammad);
+        DB::transaction(fn () => app(WalletService::class)->credit($this->admin, 18, 'commission', 'old', null, $m, 2));
+        DB::transaction(fn () => app(WalletService::class)->debit($this->admin, 10, 'withdrawal', 'paid out'));
+
+        $this->artisan('app:apply-7x7', ['--apply' => true])->expectsOutputToContain('already withdrawn')->assertExitCode(1);
+        $this->assertEquals(8, $this->admin->fresh()->wallet_balance);
+        $this->assertSame(0, $this->admin->heldCommissions()->count());
     }
 }

@@ -108,14 +108,15 @@
                 <div class="card-header">
                     <div>
                         <h3 class="card-title">Commission earned</h3>
-                        <p class="mt-0.5 text-xs text-ink-400">Everything this member has earned, by level. Withdrawals don't reduce these totals.</p>
+                        <p class="mt-0.5 text-xs text-ink-400">Everything this member has earned, by level. Withdrawals don't reduce these totals.
+                            7x7: {{ $qualifiedDirects }} active {{ Str::plural('direct', $qualifiedDirects) }}.</p>
                     </div>
                     <span class="money text-lg font-semibold text-gold">${{ number_format($commissionTotal, 2) }}</span>
                 </div>
                 <div class="table-wrap">
                     <table class="table">
                         <thead>
-                            <tr><th>Level</th><th>Rate now</th><th class="text-right">Count</th><th class="text-right">Total earned</th><th>Period (first – latest)</th></tr>
+                            <tr><th>Level</th><th>Rate now</th><th>7x7</th><th class="text-right">Count</th><th class="text-right">Total earned</th><th title="First – latest commission">Period</th></tr>
                         </thead>
                         <tbody>
                             @foreach ($commissionRates as $level => $rate)
@@ -123,17 +124,31 @@
                                 <tr @class(['opacity-50' => ! $row])>
                                     <td class="font-medium text-ink-100">Level {{ $level }}{{ $level === 1 ? ' (direct)' : '' }}</td>
                                     <td class="text-ink-400">{{ $rate + 0 }}%</td>
+                                    @php $st = $levelStatus[$level]; @endphp
+                                    <td class="whitespace-nowrap text-xs">
+                                        @if (! $st['open'])
+                                            <span class="text-ink-400">🔒 needs {{ $st['needs'] }}</span>
+                                        @elseif ($st['slots'] === null)
+                                            <span class="text-bull-400">Open</span>
+                                        @else
+                                            <span @class(['text-bull-400' => $st['used'] < $st['slots'], 'text-bear-400' => $st['used'] >= $st['slots']])>{{ min($st['used'], $st['slots']) }}/{{ $st['slots'] }} used</span>
+                                        @endif
+                                        @if ($st['waiting'] > 0)
+                                            <span class="block text-gold">⏳ {{ $st['waiting'] }} waiting</span>
+                                        @endif
+                                    </td>
                                     <td class="text-right">{{ $row?->items ?? 0 }}</td>
                                     <td class="money text-right {{ $row ? 'text-bull-400' : 'text-ink-400' }}">${{ number_format((float) ($row?->total ?? 0), 2) }}</td>
                                     @php
                                         $first = $row ? \Illuminate\Support\Carbon::parse($row->first_at)->format('d M Y') : null;
                                         $last = $row ? \Illuminate\Support\Carbon::parse($row->last_at)->format('d M Y') : null;
                                     @endphp
-                                    <td class="whitespace-nowrap text-ink-400">{{ $row ? ($first === $last ? $first : $first.' – '.$last) : '—' }}</td>
+                                    <td class="whitespace-nowrap text-xs text-ink-400">{{ $row ? ($first === $last ? $first : $first.' – '.$last) : '—' }}</td>
                                 </tr>
                             @endforeach
                             <tr class="font-semibold">
                                 <td class="text-ink-100">All levels</td>
+                                <td></td>
                                 <td></td>
                                 <td class="text-right text-ink-100">{{ $commissionByLevel->sum('items') }}</td>
                                 <td class="money text-right text-gold">${{ number_format($commissionTotal, 2) }}</td>
@@ -142,6 +157,31 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($heldCommissions->isNotEmpty())
+                    <div class="border-t border-ink-700 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gold">
+                        ⏳ Waiting (7x7) · ${{ number_format((float) $heldCommissions->sum('amount'), 2) }} — paid automatically when this member has enough active directs
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>Since</th><th>Level</th><th>From member</th><th>Needs</th><th class="text-right">Amount</th></tr></thead>
+                            <tbody>
+                                @foreach ($heldCommissions as $h)
+                                    <tr>
+                                        <td class="whitespace-nowrap text-ink-400">{{ $h->created_at->format('d M Y, h:i A') }}</td>
+                                        <td><span class="badge badge-gray">L{{ $h->level }}</span></td>
+                                        <td>
+                                            <span class="font-medium text-ink-100">{{ $h->fromUser?->name ?? '—' }}</span>
+                                            <div class="text-xs text-ink-400">{{ $h->fromUser?->username }}</div>
+                                        </td>
+                                        <td class="text-xs text-ink-400">{{ $h->level }} active directs (has {{ $qualifiedDirects }})</td>
+                                        <td class="money text-right text-gold">${{ number_format((float) $h->amount, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
 
                 <div class="border-t border-ink-700 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Every commission</div>
                 @if ($commissions->isEmpty())

@@ -1,4 +1,5 @@
 <x-app-layout title="Dashboard" subtitle="Your referral link, earnings and assigned class batches.">
+    @include('partials.waiting-commission-alert')
     @include('partials.network-summary')
 
     <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-ink-100">My Batches</h2>

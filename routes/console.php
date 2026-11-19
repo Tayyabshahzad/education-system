@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\HeldCommission;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
@@ -169,3 +170,126 @@ Artisan::command('app:recalculate-commissions {--since= : Only commission credit
 
     return 0;
 })->purpose('Re-price commission already paid using the current percentages (dry run unless --apply)');
+
+/*
+| Apply the 7x7 rule to commission that was paid BEFORE the rule existed.
+|   php artisan app:apply-7x7            (dry run: shows what would move to "waiting")
+|   php artisan app:apply-7x7 --apply    (does it)
+| For every upline and every level 2-7, with D = their active directs today:
+|   level closed (D < level) -> all commission on that level goes back to waiting;
+|   level open (D >= level) -> everything on that level stays paid.
+| Moved commission leaves the wallet (the wallet history is rebuilt) and is paid back
+| automatically, at the same amount, once the upline has enough active directs.
+| Refuses to apply if a wallet would go negative (money already withdrawn) or a wallet
+| does not match its own history. Running it twice changes nothing the second time.
+*/
+Artisan::command('app:apply-7x7 {--apply : Write the changes (default is a dry run)}', function () {
+    $paymentClass = (new Payment)->getMorphClass();
+    $moves = [];
+
+    $earners = WalletTransaction::where('type', 'commission')->where('level', '>=', 2)->distinct()->pluck('user_id');
+    foreach ($earners as $userId) {
+        $user = User::withTrashed()->find($userId);
+        $directs = $user->qualifiedDirectCount();
+
+        $byLevel = WalletTransaction::where('user_id', $userId)->where('type', 'commission')->where('level', '>=', 2)
+            ->with('fromUser')->orderBy('id')->get()->groupBy('level');
+
+        foreach ($byLevel as $level => $txs) {
+            if ($directs >= $level) {
+                continue; // open level: all of it stays paid
+            }
+            foreach ($txs as $tx) {
+                $member = $tx->fromUser;
+                $base = $tx->source_type === $paymentClass && $tx->source_id && $member
+                    ? (float) Payment::where('user_id', $member->id)->where('status', 'approved')->where('id', '<=', $tx->source_id)->sum('amount')
+                    : (float) ($member?->paid_amount ?? 0);
+                $moves[] = compact('tx', 'user', 'directs', 'base');
+            }
+        }
+    }
+
+    if (! $moves) {
+        $this->info('Nothing to change: all level 2-7 commission already follows the 7x7 rule.');
+
+        return 0;
+    }
+
+    $this->table(
+        ['Tx', 'Date', 'Earner', 'Full-fee directs', 'Level', 'From member', 'Amount $', 'Becomes'],
+        array_map(fn ($m) => [
+            $m['tx']->id, $m['tx']->created_at->format('Y-m-d H:i'), $m['user']->username, $m['directs'],
+            $m['tx']->level, $m['tx']->fromUser?->username, number_format((float) $m['tx']->amount, 2),
+            "waiting (needs {$m['tx']->level} directs)",
+        ], $moves),
+    );
+
+    $byUser = collect($moves)->groupBy(fn ($m) => $m['user']->id);
+    $problems = [];
+    $rows = [];
+    foreach ($byUser as $userId => $items) {
+        $user = $items->first()['user'];
+        $out = round($items->sum(fn ($m) => (float) $m['tx']->amount), 2);
+        $ledger = round((float) WalletTransaction::where('user_id', $userId)->sum('amount'), 2);
+        $after = round((float) $user->wallet_balance - $out, 2);
+        $rows[] = [$user->username, number_format((float) $user->wallet_balance, 2), '-'.number_format($out, 2), number_format($after, 2)];
+
+        if (abs($ledger - (float) $user->wallet_balance) >= 0.005) {
+            $problems[] = "{$user->username}: wallet ({$user->wallet_balance}) does not match its transaction history ({$ledger}).";
+        }
+        if ($after < 0) {
+            $problems[] = "{$user->username}: wallet would become {$after} (already withdrawn). Handle this one manually.";
+        }
+    }
+    $this->table(['Wallet', 'Now $', 'To waiting $', 'After $'], $rows);
+
+    if ($problems) {
+        foreach ($problems as $p) {
+            $this->error($p);
+        }
+        $this->warn('Nothing was changed.');
+
+        return 1;
+    }
+
+    if (! $this->option('apply')) {
+        $this->warn('Dry run: nothing was changed. Run again with --apply to move these to waiting.');
+
+        return 0;
+    }
+
+    DB::transaction(function () use ($moves, $byUser) {
+        foreach ($moves as $m) {
+            $tx = $m['tx'];
+            $held = HeldCommission::create([
+                'user_id' => $tx->user_id,
+                'from_user_id' => $tx->from_user_id,
+                'level' => $tx->level,
+                'percent' => $m['base'] > 0 ? round((float) $tx->amount / $m['base'] * 100, 2) : 0,
+                'base' => $m['base'],
+                'amount' => $tx->amount,
+                'source_type' => $tx->source_type,
+                'source_id' => $tx->source_id,
+            ]);
+            // Keep the original date: the commission has been "waiting" since it was earned.
+            $held->forceFill(['created_at' => $tx->created_at])->save();
+            $tx->delete();
+        }
+
+        foreach ($byUser->keys() as $userId) {
+            $user = User::withTrashed()->whereKey($userId)->lockForUpdate()->first();
+            $running = 0.0;
+            foreach (WalletTransaction::where('user_id', $userId)->orderBy('id')->lockForUpdate()->get() as $t) {
+                $running = round($running + (float) $t->amount, 2);
+                if (abs($running - (float) $t->balance_after) >= 0.005) {
+                    $t->forceFill(['balance_after' => $running])->save();
+                }
+            }
+            $user->forceFill(['wallet_balance' => $running])->save();
+        }
+    });
+
+    $this->info(count($moves).' commission(s) moved to waiting for '.$byUser->count().' user(s). They are paid automatically once those users have enough active directs.');
+
+    return 0;
+})->purpose('Apply the 7x7 rule to commission paid before it existed (dry run unless --apply)');
