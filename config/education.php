@@ -35,6 +35,11 @@ return [
 
         'min_withdrawal' => 10,
 
+        // A member who has paid less than the full fee gets this % of every commission paid
+        // towards their remaining fee automatically (only up to what is still owed); the rest
+        // stays in the wallet and can be withdrawn. 0 switches it off.
+        'commission_fee_share' => 50,
+
         // Shown to members on the payment page (bank / wallet account details).
         'payment_instructions' => "Bank: —\nAccount title: —\nAccount number: —",
 

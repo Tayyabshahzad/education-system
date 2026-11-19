@@ -53,6 +53,18 @@
                     <div class="money mt-1 text-2xl font-semibold text-gold">${{ number_format($balance, 2) }}</div>
                 </div>
 
+                @php
+                    $feeShare = \App\Models\Setting::money('commission_fee_share');
+                    $fullFee = \App\Models\Setting::money('full_fee');
+                @endphp
+                @if ($user->isMember() && ! $user->isFullyPaid() && $feeShare > 0)
+                    <p class="mb-5 rounded-lg border border-gold/30 bg-gold/5 px-3 py-2 text-xs text-ink-200">
+                        You have paid <span class="money">${{ number_format((float) $user->paid_amount, 2) }}</span> of the
+                        <span class="money">${{ number_format($fullFee, 0) }}</span> fee, so {{ $feeShare + 0 }}% of each commission goes towards
+                        the remaining <span class="money text-gold">${{ number_format($fullFee - (float) $user->paid_amount, 2) }}</span> first. Your wallet shows what you can withdraw.
+                    </p>
+                @endif
+
                 @if ($balance < $minWithdrawal)
                     <p class="text-sm text-ink-400">The minimum withdrawal is <span class="money text-ink-100">${{ number_format($minWithdrawal, 2) }}</span>. Keep building your team to unlock payouts.</p>
                 @else

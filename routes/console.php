@@ -5,6 +5,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\CommissionService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -216,7 +217,7 @@ Artisan::command('app:apply-7x7 {--apply : Write the changes (default is a dry r
     }
 
     $this->table(
-        ['Tx', 'Date', 'Earner', 'Full-fee directs', 'Level', 'From member', 'Amount $', 'Becomes'],
+        ['Tx', 'Date', 'Earner', 'Active directs', 'Level', 'From member', 'Amount $', 'Becomes'],
         array_map(fn ($m) => [
             $m['tx']->id, $m['tx']->created_at->format('Y-m-d H:i'), $m['user']->username, $m['directs'],
             $m['tx']->level, $m['tx']->fromUser?->username, number_format((float) $m['tx']->amount, 2),
@@ -293,3 +294,83 @@ Artisan::command('app:apply-7x7 {--apply : Write the changes (default is a dry r
 
     return 0;
 })->purpose('Apply the 7x7 rule to commission paid before it existed (dry run unless --apply)');
+
+/*
+| Apply the "commission pays the remaining fee" rule to commission earned before it existed.
+|   php artisan app:apply-fee-share            (dry run)
+|   php artisan app:apply-fee-share --apply    (does it)
+| For every active member still below the full fee, each commission not yet shared gives
+| Setting "commission_fee_share" % (50% by default) to their fee, oldest first, never more
+| than they still owe and never more than is in their wallet. Running it twice does nothing.
+*/
+Artisan::command('app:apply-fee-share {--apply : Write the changes (default is a dry run)}', function () {
+    $percent = Setting::money('commission_fee_share');
+    if ($percent <= 0) {
+        $this->info('commission_fee_share is 0% in Admin > Settings: nothing to do.');
+
+        return 0;
+    }
+
+    $fullFee = Setting::money('full_fee');
+    $plan = [];
+    $members = User::role(User::ROLE_MEMBER)->where('status', 'active')->where('paid_amount', '<', $fullFee)->orderBy('id')->get();
+
+    foreach ($members as $member) {
+        $pending = (float) $member->payments()->where('status', 'pending')->sum('amount');
+        $owed = round($fullFee - (float) $member->paid_amount - $pending, 2);
+        $wallet = (float) $member->wallet_balance;
+
+        $txs = $member->walletTransactions()->where('type', 'commission')->whereNull('fee_share_payment_id')->orderBy('id')->get();
+        foreach ($txs as $tx) {
+            $share = min(round((float) $tx->amount * $percent / 100, 2), $owed, $wallet);
+            if ($share <= 0) {
+                break;
+            }
+            $owed = round($owed - $share, 2);
+            $wallet = round($wallet - $share, 2);
+            $plan[] = ['member' => $member, 'tx' => $tx, 'share' => $share];
+        }
+    }
+
+    if (! $plan) {
+        $this->info('Nothing to change: no member below the full fee has unshared commission.');
+
+        return 0;
+    }
+
+    $this->table(
+        ['Member', 'Paid now $', 'Commission tx', 'Commission $', 'To fee $'],
+        array_map(fn ($p) => [
+            $p['member']->username, number_format((float) $p['member']->paid_amount, 2),
+            '#'.$p['tx']->id.' L'.$p['tx']->level, number_format((float) $p['tx']->amount, 2), number_format($p['share'], 2),
+        ], $plan),
+    );
+    $rows = collect($plan)->groupBy(fn ($p) => $p['member']->id)->map(function ($items) {
+        $m = $items->first()['member'];
+        $total = $items->sum('share');
+
+        return [$m->username, number_format((float) $m->wallet_balance, 2), number_format((float) $m->wallet_balance - $total, 2),
+            number_format((float) $m->paid_amount, 2), number_format((float) $m->paid_amount + $total, 2)];
+    })->values()->all();
+    $this->table(['Member', 'Wallet now $', 'Wallet after $', 'Paid now $', 'Paid after $'], $rows);
+
+    if (! $this->option('apply')) {
+        $this->warn('Dry run: nothing was changed. Run again with --apply to pay these amounts towards the fees.');
+
+        return 0;
+    }
+
+    $commission = app(CommissionService::class);
+    $applied = DB::transaction(function () use ($plan, $commission) {
+        $total = 0.0;
+        foreach ($plan as $p) {
+            $total += $commission->applyFeeShare($p['member']->fresh(), $p['tx']->fresh());
+        }
+
+        return $total;
+    });
+
+    $this->info('$'.number_format($applied, 2).' of commission paid towards members\' remaining fees.');
+
+    return 0;
+})->purpose('Pay part of earlier commission towards the remaining fee of members below the full fee (dry run unless --apply)');

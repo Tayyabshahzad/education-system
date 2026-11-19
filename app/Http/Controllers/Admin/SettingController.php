@@ -23,6 +23,7 @@ class SettingController extends Controller
             'max_fee' => ['required', 'numeric', 'gte:full_fee'],
             ...$this->commissionRules(),
             'min_withdrawal' => ['required', 'numeric', 'min:1'],
+            'commission_fee_share' => ['required', 'numeric', 'min:0', 'max:100'],
             'withdrawal_methods' => ['required', 'string', 'max:500'],
             'payment_instructions' => ['nullable', 'string', 'max:2000'],
         ], [

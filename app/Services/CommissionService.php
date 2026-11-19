@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\HeldCommission;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -49,7 +50,7 @@ class CommissionService
             $amount = Setting::commissionAmount($level, $base);
             if ($amount > 0 && $this->eligible($upline, $requireFullUpline)) {
                 if ($this->levelOpen($upline, $level)) {
-                    $this->wallet->credit(
+                    $tx = $this->wallet->credit(
                         $upline,
                         $amount,
                         'commission',
@@ -58,6 +59,7 @@ class CommissionService
                         $member,
                         $level,
                     );
+                    $this->applyFeeShare($upline, $tx);
                 } else {
                     // 7x7: not enough directs yet — keep it waiting for this upline.
                     HeldCommission::create([
@@ -122,11 +124,46 @@ class CommissionService
                     $level,
                 );
                 $held->forceFill(['released_at' => now(), 'wallet_transaction_id' => $tx->id])->save();
+                $this->applyFeeShare($upline, $tx);
                 $released++;
             }
         }
 
         return $released;
+    }
+
+    /**
+     * A member who has not paid the full fee yet does not get all of their commission:
+     * Setting "commission_fee_share" % of it (50% by default) is paid towards their
+     * remaining fee straight away, but never more than is still owed. Staff, teachers and
+     * admins pay no fee, so nothing is taken from theirs. Must run inside a transaction.
+     *
+     * Returns the amount applied to the fee (0 when nothing was taken).
+     */
+    public function applyFeeShare(User $upline, WalletTransaction $commission): float
+    {
+        $percent = Setting::money('commission_fee_share');
+        if ($percent <= 0 || $commission->fee_share_payment_id || ! $upline->isMember()) {
+            return 0.0;
+        }
+
+        $member = User::whereKey($upline->id)->lockForUpdate()->first();
+        if (! $member) {
+            return 0.0;
+        }
+
+        // Still owed up to the full fee, minus any payment screenshot already waiting for review.
+        $pending = (float) $member->payments()->where('status', 'pending')->sum('amount');
+        $owed = round(Setting::money('full_fee') - (float) $member->paid_amount - $pending, 2);
+        $share = min(round((float) $commission->amount * $percent / 100, 2), $owed, (float) $member->wallet_balance);
+        if ($share <= 0) {
+            return 0.0;
+        }
+
+        $payment = app(PaymentService::class)->applyCommissionToFee($member, $share, $commission, $percent);
+        $commission->forceFill(['fee_share_payment_id' => $payment->id])->save();
+
+        return $share;
     }
 
     /**

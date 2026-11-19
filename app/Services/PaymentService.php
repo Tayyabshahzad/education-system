@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -114,6 +115,28 @@ class PaymentService
             $payment->reviewed_at = now();
             $payment->save();
         });
+    }
+
+    /**
+     * Pays part of a commission the member just received towards their remaining fee
+     * (see CommissionService::applyFeeShare). Approved at once like any wallet payment, so
+     * reaching the full fee here releases the member's own upline commission as usual.
+     * Must run inside a transaction.
+     */
+    public function applyCommissionToFee(User $member, float $amount, WalletTransaction $commission, float $percent): Payment
+    {
+        $payment = Payment::create([
+            'user_id' => $member->id,
+            'paid_by' => $member->id,
+            'amount' => $amount,
+            'method' => 'wallet',
+            'note' => rtrim(rtrim(number_format($percent, 2), '0'), '.')."% of commission #{$commission->id} applied to the remaining fee automatically",
+        ]);
+
+        $this->wallet->debit($member, $amount, 'payment', "Fee top-up from commission #{$commission->id} (".rtrim(rtrim(number_format($percent, 2), '0'), '.').'% until the full fee is paid)', $payment);
+        $this->markApproved($payment, $member);
+
+        return $payment;
     }
 
     /** Adds the amount to the member's paid total, activates them and releases upline commission once. */

@@ -217,7 +217,7 @@ class CommissionTest extends TestCase
             ->assertSee('name="commission_level_7"', false);
 
         $amounts = [1 => 40, 2 => 20, 3 => 10, 4 => 8, 5 => 6, 6 => 4, 7 => 2];
-        $payload = ['min_join_fee' => 25, 'full_fee' => 200, 'max_fee' => 200, 'min_withdrawal' => 10, 'withdrawal_methods' => 'Bank'];
+        $payload = ['min_join_fee' => 25, 'full_fee' => 200, 'max_fee' => 200, 'min_withdrawal' => 10, 'commission_fee_share' => 50, 'withdrawal_methods' => 'Bank'];
         foreach ($amounts as $level => $amount) {
             $payload["commission_level_{$level}"] = $amount;
         }
@@ -373,7 +373,9 @@ class CommissionTest extends TestCase
         for ($i = 1; $i <= 10; $i++) {
             $this->pay($this->member(sponsor: $muhammad), 200);
         }
-        $this->assertEquals(300, $muhammad->fresh()->wallet_balance, 'Muhammad: 10 × 15%');
+        // Muhammad earns 10 × $30 = $300, but he paid only $25: half of each ($150) went to his fee.
+        $this->assertEquals(150, $muhammad->fresh()->wallet_balance);
+        $this->assertEquals(175, $muhammad->fresh()->paid_amount);
         $this->assertEquals(0, $this->admin->fresh()->wallet_balance, 'Admin has 1 direct: level 2 closed');
         $this->assertSame(10, $this->admin->heldCommissions()->waiting()->count());
 
@@ -388,7 +390,9 @@ class CommissionTest extends TestCase
             $this->pay($this->member(sponsor: $muhammad), 200);
         }
         $this->pay($this->member(sponsor: $newDirect), 200);
-        $this->assertEquals(180 + 4 * 18, $this->admin->fresh()->wallet_balance);
+        // Along the way Muhammad's fee shares took him to $200, which released his own level-1 15% ($30) to admin.
+        $this->assertEquals(200, $muhammad->fresh()->paid_amount);
+        $this->assertEquals(180 + 4 * 18 + 30, $this->admin->fresh()->wallet_balance);
         $this->assertSame(14, $this->admin->walletTransactions()->where('level', 2)->count());
     }
 
@@ -475,7 +479,9 @@ class CommissionTest extends TestCase
             }
         }
 
-        $this->assertEquals(60, $muhammad->fresh()->wallet_balance, 'Muhammad: 15% from Azrar and Aftab only');
+        // Muhammad earns $60 (15% from Azrar and Aftab only); he paid only $25, so half goes to his fee.
+        $this->assertEquals(30, $muhammad->fresh()->wallet_balance, 'Withdrawable half');
+        $this->assertEquals(55, $muhammad->fresh()->paid_amount, '25 + 30 from commission');
         $this->assertEquals(0, $this->admin->fresh()->wallet_balance, 'Admin: nothing yet (1 active direct)');
         $this->assertEquals(36, $this->admin->heldCommissions()->waiting()->sum('amount'), '9% + 9% waiting');
 
@@ -483,8 +489,8 @@ class CommissionTest extends TestCase
         $this->pay($this->member(sponsor: $this->admin), 25);
         $this->assertEquals(36, $this->admin->fresh()->wallet_balance);
 
-        // Muhammad completes $200: admin gets Muhammad's level-1 15% too.
-        $this->pay($muhammad, 175);
+        // Muhammad pays the remaining $145: admin gets Muhammad's level-1 15% too.
+        $this->pay($muhammad, 145);
         $this->assertEquals(66, $this->admin->fresh()->wallet_balance);
     }
 
@@ -617,5 +623,107 @@ class CommissionTest extends TestCase
         $this->artisan('app:apply-7x7', ['--apply' => true])->expectsOutputToContain('already withdrawn')->assertExitCode(1);
         $this->assertEquals(8, $this->admin->fresh()->wallet_balance);
         $this->assertSame(0, $this->admin->heldCommissions()->count());
+    }
+
+    /* ---------- Commission pays the remaining fee (members below the full fee) ---------- */
+
+    public function test_member_below_full_fee_gets_half_of_commission_and_half_pays_the_fee(): void
+    {
+        $muhammad = $this->member(['name' => 'Muhammad'], $this->fullMember());
+        $this->pay($muhammad, 25);
+
+        $this->pay($this->member(sponsor: $muhammad), 200); // $30 commission
+
+        $muhammad->refresh();
+        $this->assertEquals(15, $muhammad->wallet_balance, '50% can be withdrawn');
+        $this->assertEquals(40, $muhammad->paid_amount, '50% paid towards the fee');
+        $feePayment = $muhammad->payments()->where('method', 'wallet')->sole();
+        $this->assertSame('approved', $feePayment->status);
+        $this->assertStringContainsString('applied to the remaining fee automatically', $feePayment->note);
+        $commission = $muhammad->walletTransactions()->where('type', 'commission')->sole();
+        $this->assertSame($feePayment->id, $commission->fee_share_payment_id);
+
+        // He can withdraw only what is in the wallet.
+        $this->actingAs($muhammad)->post(route('withdrawals.store'), ['amount' => 16, 'method' => 'Bank Transfer', 'account_title' => 'M', 'account_number' => '1'])
+            ->assertSessionHasErrors('amount');
+        $this->actingAs($muhammad)->post(route('withdrawals.store'), ['amount' => 15, 'method' => 'Bank Transfer', 'account_title' => 'M', 'account_number' => '1'])
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_fee_share_stops_at_the_full_fee_and_completing_it_pays_the_sponsor(): void
+    {
+        $sponsor = $this->fullMember();
+        $member = $this->member(sponsor: $sponsor);
+        $this->pay($member, 190); // owes $10
+
+        $this->pay($this->member(sponsor: $member), 200); // $30 commission: 50% would be $15, only $10 owed
+
+        $member->refresh();
+        $this->assertEquals(200, $member->paid_amount);
+        $this->assertEquals(20, $member->wallet_balance);
+        $this->assertNotNull($member->commission_released_at);
+        $this->assertEquals(30, $sponsor->fresh()->wallet_balance, 'Reaching $200 released the member\'s own 15% to their sponsor');
+
+        // Fully paid now: the next commission is not shared.
+        $this->pay($this->member(sponsor: $member), 200);
+        $this->assertEquals(50, $member->fresh()->wallet_balance);
+    }
+
+    public function test_full_fee_members_staff_and_zero_setting_keep_all_commission(): void
+    {
+        $full = $this->fullMember();
+        $this->pay($this->member(sponsor: $full), 200);
+        $this->assertEquals(30, $full->fresh()->wallet_balance);
+
+        $staff = $this->staff();
+        $this->pay($this->member(sponsor: $staff), 200);
+        $this->assertEquals(30, $staff->fresh()->wallet_balance, 'Staff pay no fee');
+
+        Setting::setMany(['commission_fee_share' => 0]);
+        $partial = $this->member(sponsor: $full);
+        $this->pay($partial, 25);
+        $this->pay($this->member(sponsor: $partial), 200);
+        $this->assertEquals(30, $partial->fresh()->wallet_balance, '0% = switched off');
+        $this->assertEquals(25, $partial->fresh()->paid_amount);
+    }
+
+    public function test_released_waiting_commission_is_shared_too(): void
+    {
+        $partial = $this->member(sponsor: $this->fullMember());
+        $this->pay($partial, 25);
+        $direct = $this->fullMember($partial);
+        $this->pay($this->member(sponsor: $direct), 200); // level 2 for $partial: $18 waits (1 direct)
+
+        $this->pay($this->member(sponsor: $partial), 25); // 2nd active direct: $18 released
+        $this->assertEquals(9, $partial->fresh()->wallet_balance);
+        $this->assertEquals(34, $partial->fresh()->paid_amount);
+    }
+
+    public function test_apply_fee_share_command_for_commission_earned_before_the_rule(): void
+    {
+        // Muhammad ($25) earned $60 before the rule existed.
+        Setting::setMany(['commission_fee_share' => 0]);
+        $muhammad = $this->member(['name' => 'Muhammad'], $this->admin);
+        $this->pay($muhammad, 25);
+        $this->pay($this->member(sponsor: $muhammad), 200);
+        $this->pay($this->member(sponsor: $muhammad), 200);
+        $this->assertEquals(60, $muhammad->fresh()->wallet_balance);
+        Setting::setMany(['commission_fee_share' => 50]);
+
+        $this->artisan('app:apply-fee-share')->expectsOutputToContain('Dry run')->assertExitCode(0);
+        $this->assertEquals(60, $muhammad->fresh()->wallet_balance);
+
+        $this->artisan('app:apply-fee-share', ['--apply' => true])->assertExitCode(0);
+        $this->assertEquals(30, $muhammad->fresh()->wallet_balance);
+        $this->assertEquals(55, $muhammad->fresh()->paid_amount);
+        $this->assertSame(2, $muhammad->payments()->where('method', 'wallet')->count());
+
+        $this->artisan('app:apply-fee-share')->expectsOutputToContain('Nothing to change')->assertExitCode(0);
+    }
+
+    public function test_settings_page_has_the_fee_share_field(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.settings.edit'))->assertOk()
+            ->assertSee('name="commission_fee_share"', false);
     }
 }

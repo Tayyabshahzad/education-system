@@ -95,6 +95,16 @@
                     <x-text-input id="withdrawal_methods" name="withdrawal_methods" :value="old('withdrawal_methods', $s['withdrawal_methods'])" required />
                 </div>
                 <div class="sm:col-span-2">
+                    <x-input-label for="commission_fee_share" value="Commission that goes to the fee for members below the full fee" />
+                    <div class="relative max-w-xs">
+                        <x-text-input id="commission_fee_share" name="commission_fee_share" type="number" step="0.01" min="0" max="100"
+                                      :value="old('commission_fee_share', $s['commission_fee_share'] ?? 50)" class="money pr-8" required />
+                        <span class="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm text-ink-400">%</span>
+                    </div>
+                    <p class="field-help">Until a member has paid the full fee, this % of every commission they earn is paid towards their remaining fee automatically (never more than they still owe). The rest stays in their wallet to withdraw. 0 = off.</p>
+                    <x-input-error :messages="$errors->get('commission_fee_share')" />
+                </div>
+                <div class="sm:col-span-2">
                     <x-input-label for="payment_instructions" value="Payment instructions shown to members" />
                     <textarea id="payment_instructions" name="payment_instructions" rows="4" class="field-textarea font-mono">{{ old('payment_instructions', $s['payment_instructions']) }}</textarea>
                     <p class="field-help">Bank / Easypaisa / USDT account details members should send money to.</p>

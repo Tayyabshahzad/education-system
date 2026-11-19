@@ -44,6 +44,10 @@
             <div>
                 <p class="font-semibold text-ink-100">Upgrade to the full package</p>
                 <p class="mt-1 text-sm text-ink-400">Pay <span class="money text-gold">${{ number_format($fullFee - $paid, 2) }}</span> more to join live class batches and activate referral earnings for your sponsor.</p>
+                @php $feeShare = \App\Models\Setting::money('commission_fee_share'); @endphp
+                @if ($feeShare > 0)
+                    <p class="mt-1 text-xs text-ink-400">Until then, {{ $feeShare + 0 }}% of every commission you earn is paid towards this amount automatically; the rest goes to your wallet.</p>
+                @endif
             </div>
             <a href="{{ route('payments.index') }}" class="btn btn-primary">Top up now</a>
         </div>
