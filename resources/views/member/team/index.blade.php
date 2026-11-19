@@ -12,7 +12,7 @@
                         :class="tab === {{ $level }} ? 'border-gold/40 bg-gold/10 text-gold' : 'border-ink-700 bg-ink-900 text-ink-400 hover:text-ink-100'">
                     Level {{ $level }}
                     <span class="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-ink-200">{{ $members->count() }}</span>
-                    <span class="money text-xs opacity-70">${{ number_format($commissionLevels[$level] ?? 0, 0) }}</span>
+                    <span class="money text-xs opacity-70">{{ ($commissionLevels[$level] ?? 0) + 0 }}%</span>
                 </button>
             @endforeach
         </div>

@@ -51,9 +51,27 @@ class MemberController extends Controller
     {
         $this->ensureMember($member);
 
+        // Commission is read from the commission records themselves, not the wallet balance,
+        // so the lifetime earnings stay visible after the member withdraws.
+        $commissions = $member->walletTransactions()->where('type', 'commission');
+
         return view('admin.members.show', [
             'member' => $member->load(['sponsor', 'batches.teacher']),
             'levels' => $member->downlineByLevel(),
+            'commissionRates' => Setting::commissionLevels(),
+            'commissionByLevel' => (clone $commissions)
+                ->selectRaw('level, COUNT(*) as items, SUM(amount) as total, MIN(created_at) as first_at, MAX(created_at) as last_at')
+                ->groupBy('level')
+                ->get()
+                ->keyBy('level'),
+            'commissionTotal' => (float) (clone $commissions)->sum('amount'),
+            'withdrawnTotal' => (float) $member->withdrawals()->where('status', 'approved')->sum('amount'),
+            'commissions' => (clone $commissions)
+                ->with('fromUser:id,name,username')
+                ->latest()
+                ->latest('id')
+                ->paginate(15, ['*'], 'commissions_page')
+                ->fragment('commissions'),
             'payments' => $member->payments()->latest()->limit(10)->get(),
             'transactions' => $member->walletTransactions()->with('fromUser:id,username')->latest()->limit(10)->get(),
             'withdrawals' => $member->withdrawals()->latest()->limit(10)->get(),

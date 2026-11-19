@@ -18,15 +18,17 @@ return [
         // Highest total a member can pay (registration + top-ups).
         'max_fee' => 200,
 
-        // Fixed USD commission per upline level (level 1 = direct sponsor).
-        // Admins change these from Admin > Settings.
-        'commission_level_1' => 30,
-        'commission_level_2' => 20,
-        'commission_level_3' => 10,
-        'commission_level_4' => 5,
-        'commission_level_5' => 5,
-        'commission_level_6' => 5,
-        'commission_level_7' => 5,
+        // Commission PERCENT per upline level (level 1 = direct sponsor), taken from the
+        // member's paid total when it reaches the full fee. On $200: 15% = $30, 9% = $18 …
+        // These are only first-install defaults: the live values are in the settings table
+        // and admins change them from Admin > Settings.
+        'commission_level_1' => 15,
+        'commission_level_2' => 9,
+        'commission_level_3' => 5,
+        'commission_level_4' => 3,
+        'commission_level_5' => 3,
+        'commission_level_6' => 0,
+        'commission_level_7' => 0,
 
         // When true, an upline must be fully paid themselves to receive commission.
         'upline_must_be_full' => false,

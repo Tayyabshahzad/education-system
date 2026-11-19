@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\Payment;
+use App\Models\Setting;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -48,3 +52,120 @@ Artisan::command('app:create-super-admin {--name=} {--email=} {--password=}', fu
 
     return 0;
 })->purpose('Create a super admin account (use once on a fresh server)');
+
+/*
+| Re-price commission already paid using the CURRENT percentages in Admin > Settings,
+| e.g. after rates were changed but some commission had gone out at the old rates.
+|   php artisan app:recalculate-commissions --since="2026-11-19"          (dry run: shows changes only)
+|   php artisan app:recalculate-commissions --since="2026-11-19" --apply  (writes them)
+| The commission records themselves are corrected (amount, description), then each affected
+| wallet balance and every balance_after in that user's history are recomputed.
+| Refuses to apply if a wallet would go negative (money already withdrawn) or a wallet
+| does not match its own history.
+*/
+Artisan::command('app:recalculate-commissions {--since= : Only commission credited on/after this date or datetime} {--until= : Only commission credited up to this date or datetime} {--apply : Write the changes (default is a dry run)}', function () {
+    if (! $this->option('since')) {
+        $this->error('Give --since (e.g. --since="2026-11-19") so older, correctly priced commission is not touched.');
+
+        return 1;
+    }
+
+    $query = WalletTransaction::where('type', 'commission')
+        ->where('created_at', '>=', Carbon::parse($this->option('since')))
+        ->when($this->option('until'), fn ($q, $until) => $q->where('created_at', '<=', strlen($until) <= 10 ? Carbon::parse($until)->endOfDay() : Carbon::parse($until)))
+        ->with(['user', 'fromUser'])
+        ->orderBy('id');
+
+    $changes = [];
+    foreach ($query->get() as $tx) {
+        $member = $tx->fromUser;
+        // What the member had paid when their commission was released: every approved
+        // payment up to and including the one that triggered it.
+        $base = $tx->source_type === (new Payment)->getMorphClass() && $tx->source_id
+            ? (float) Payment::where('user_id', $member->id)->where('status', 'approved')->where('id', '<=', $tx->source_id)->sum('amount')
+            : (float) $member->paid_amount;
+        $percent = Setting::commissionLevels()[$tx->level] ?? 0;
+        $new = Setting::commissionAmount((int) $tx->level, $base);
+
+        if (abs($new - (float) $tx->amount) >= 0.005) {
+            $changes[] = compact('tx', 'member', 'base', 'percent', 'new');
+        }
+    }
+
+    if (! $changes) {
+        $this->info('Nothing to change: all commission in that period already matches the current percentages.');
+
+        return 0;
+    }
+
+    $this->table(
+        ['Tx', 'Date', 'Earner', 'From member', 'Level', 'Paid base', 'Rate', 'Old $', 'New $', 'Diff $'],
+        array_map(fn ($c) => [
+            $c['tx']->id, $c['tx']->created_at->format('Y-m-d H:i'), $c['tx']->user->username, $c['member']->username,
+            $c['tx']->level, number_format($c['base'], 2), ($c['percent'] + 0).'%',
+            number_format((float) $c['tx']->amount, 2), number_format($c['new'], 2),
+            number_format($c['new'] - (float) $c['tx']->amount, 2),
+        ], $changes),
+    );
+
+    // Per-wallet effect and safety checks.
+    $byUser = collect($changes)->groupBy(fn ($c) => $c['tx']->user_id);
+    $problems = [];
+    $rows = [];
+    foreach ($byUser as $userId => $items) {
+        $user = User::withTrashed()->find($userId);
+        $diff = round($items->sum(fn ($c) => $c['new'] - (float) $c['tx']->amount), 2);
+        $ledger = round((float) WalletTransaction::where('user_id', $userId)->sum('amount'), 2);
+        $after = round((float) $user->wallet_balance + $diff, 2);
+        $rows[] = [$user->username, number_format((float) $user->wallet_balance, 2), number_format($diff, 2), number_format($after, 2)];
+
+        if (abs($ledger - (float) $user->wallet_balance) >= 0.005) {
+            $problems[] = "{$user->username}: wallet ({$user->wallet_balance}) does not match its transaction history ({$ledger}).";
+        }
+        if ($after < 0) {
+            $problems[] = "{$user->username}: wallet would become {$after} (already withdrawn). Correct this one manually.";
+        }
+    }
+    $this->table(['Wallet', 'Now $', 'Change $', 'After $'], $rows);
+
+    if ($problems) {
+        foreach ($problems as $p) {
+            $this->error($p);
+        }
+        $this->warn('Nothing was changed.');
+
+        return 1;
+    }
+
+    if (! $this->option('apply')) {
+        $this->warn('Dry run: nothing was changed. Run again with --apply to write these corrections.');
+
+        return 0;
+    }
+
+    DB::transaction(function () use ($changes, $byUser) {
+        foreach ($changes as $c) {
+            $c['tx']->forceFill([
+                'amount' => $c['new'],
+                'description' => "Level {$c['tx']->level} commission (".($c['percent'] + 0).'% of $'.number_format($c['base'], 2).") from {$c['member']->username}",
+            ])->save();
+        }
+
+        // Rebuild each affected wallet from its full history so every balance_after stays right.
+        foreach ($byUser->keys() as $userId) {
+            $user = User::withTrashed()->whereKey($userId)->lockForUpdate()->first();
+            $running = 0.0;
+            foreach (WalletTransaction::where('user_id', $userId)->orderBy('id')->lockForUpdate()->get() as $t) {
+                $running = round($running + (float) $t->amount, 2);
+                if (abs($running - (float) $t->balance_after) >= 0.005) {
+                    $t->forceFill(['balance_after' => $running])->save();
+                }
+            }
+            $user->forceFill(['wallet_balance' => $running])->save();
+        }
+    });
+
+    $this->info(count($changes).' commission record(s) corrected and '.$byUser->count().' wallet(s) updated.');
+
+    return 0;
+})->purpose('Re-price commission already paid using the current percentages (dry run unless --apply)');

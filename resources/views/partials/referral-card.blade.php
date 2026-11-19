@@ -23,11 +23,12 @@
         <x-copy-field :value="$refUser->referralLink()" label="Copy link" />
         <div id="referral-details" x-show="open" x-transition.opacity class="space-y-5">
             <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                @foreach ($commissionLevels as $level => $amount)
+                @foreach ($commissionLevels as $level => $percent)
+                    @php $perMember = round($fullFee * $percent / 100, 2); @endphp
                     <div class="rounded-xl border border-ink-700 bg-ink-800/50 p-3">
                         <div class="flex items-center justify-between gap-2 text-xs text-ink-400">
                             <span>Level {{ $level }}</span>
-                            <span class="money text-gold">${{ number_format($amount, $amount == floor($amount) ? 0 : 2) }}</span>
+                            <span class="money text-gold" title="{{ $percent + 0 }}% of ${{ number_format($fullFee, 0) }}">{{ $percent + 0 }}% · ${{ number_format($perMember, $perMember == floor($perMember) ? 0 : 2) }}</span>
                         </div>
                         <div class="mt-1.5 font-display text-lg font-semibold text-ink-100">{{ $levels[$level]->count() }} <span class="text-xs font-normal text-ink-400">{{ Str::plural('member', $levels[$level]->count()) }}</span></div>
                         <div class="mt-0.5 text-xs text-bull-400">Earned <span class="money">${{ number_format((float) ($earningsByLevel[$level] ?? 0), 2) }}</span></div>
@@ -41,7 +42,7 @@
                     <div class="mt-0.5 text-xs text-bull-400">Earned <span class="money">${{ number_format((float) collect($earningsByLevel)->sum(), 2) }}</span></div>
                 </div>
             </div>
-            <p class="text-xs text-ink-400">You earn the amount shown for each level when a member anywhere in your {{ count($commissionLevels) }}-level team completes the full <span class="money">${{ number_format($fullFee, 0) }}</span> package.</p>
+            <p class="text-xs text-ink-400">You earn each level's percentage of what a member paid when they complete the full <span class="money">${{ number_format($fullFee, 0) }}</span> package anywhere in your {{ count($commissionLevels) }}-level team. Dollar amounts shown are for a <span class="money">${{ number_format($fullFee, 0) }}</span> member.</p>
         </div>
     </div>
 </div>

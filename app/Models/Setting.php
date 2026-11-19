@@ -73,15 +73,24 @@ class Setting extends Model
         return (int) config('education.commission_levels');
     }
 
-    /** USD commission per level, keyed 1..N. */
+    /**
+     * Commission PERCENT per level, keyed 1..N (e.g. [1 => 15.0, 2 => 9.0, ...]).
+     * Each level earns this % of the member's paid total when their commission is released.
+     */
     public static function commissionLevels(): array
     {
         $levels = [];
         for ($i = 1; $i <= static::levelCount(); $i++) {
-            $levels[$i] = static::money("commission_level_{$i}");
+            $levels[$i] = round((float) static::get("commission_level_{$i}", 0), 2);
         }
 
         return $levels;
+    }
+
+    /** USD a level earns for a member who paid $base: base × percent / 100, rounded to cents. */
+    public static function commissionAmount(int $level, float $base): float
+    {
+        return round($base * (static::commissionLevels()[$level] ?? 0) / 100, 2);
     }
 
     public static function withdrawalMethods(): array

@@ -95,10 +95,86 @@
         </div>
 
         <div class="space-y-6 xl:col-span-2">
-            <div class="grid gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <x-stat label="Paid" :value="'$'.number_format((float) $member->paid_amount, 2)" :tone="$member->isFullyPaid() ? 'gold' : 'default'" :hint="'Full: $'.number_format($fullFee, 2)" />
-                <x-stat label="Wallet" :value="'$'.number_format((float) $member->wallet_balance, 2)" tone="green" />
+                <x-stat label="Total commission" :value="'$'.number_format($commissionTotal, 2)" tone="gold"
+                        :hint="'Lifetime, all levels · withdrawn $'.number_format($withdrawnTotal, 2)" />
+                <x-stat label="Wallet" :value="'$'.number_format((float) $member->wallet_balance, 2)" tone="green" hint="Available right now" />
                 <x-stat :label="'Team ('.count($levels).' levels)'" :value="collect($levels)->sum(fn ($l) => $l->count())" :hint="collect($levels)->map(fn ($l, $i) => 'L'.$i.': '.$l->count())->join(' · ')" />
+            </div>
+
+            {{-- Commission earned: per-level summary + every commission with its date --}}
+            <div class="card" id="commissions">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Commission earned</h3>
+                        <p class="mt-0.5 text-xs text-ink-400">Everything this member has earned, by level. Withdrawals don't reduce these totals.</p>
+                    </div>
+                    <span class="money text-lg font-semibold text-gold">${{ number_format($commissionTotal, 2) }}</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Level</th><th>Rate now</th><th class="text-right">Count</th><th class="text-right">Total earned</th><th>Period (first – latest)</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($commissionRates as $level => $rate)
+                                @php $row = $commissionByLevel[$level] ?? null; @endphp
+                                <tr @class(['opacity-50' => ! $row])>
+                                    <td class="font-medium text-ink-100">Level {{ $level }}{{ $level === 1 ? ' (direct)' : '' }}</td>
+                                    <td class="text-ink-400">{{ $rate + 0 }}%</td>
+                                    <td class="text-right">{{ $row?->items ?? 0 }}</td>
+                                    <td class="money text-right {{ $row ? 'text-bull-400' : 'text-ink-400' }}">${{ number_format((float) ($row?->total ?? 0), 2) }}</td>
+                                    @php
+                                        $first = $row ? \Illuminate\Support\Carbon::parse($row->first_at)->format('d M Y') : null;
+                                        $last = $row ? \Illuminate\Support\Carbon::parse($row->last_at)->format('d M Y') : null;
+                                    @endphp
+                                    <td class="whitespace-nowrap text-ink-400">{{ $row ? ($first === $last ? $first : $first.' – '.$last) : '—' }}</td>
+                                </tr>
+                            @endforeach
+                            <tr class="font-semibold">
+                                <td class="text-ink-100">All levels</td>
+                                <td></td>
+                                <td class="text-right text-ink-100">{{ $commissionByLevel->sum('items') }}</td>
+                                <td class="money text-right text-gold">${{ number_format($commissionTotal, 2) }}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="border-t border-ink-700 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Every commission</div>
+                @if ($commissions->isEmpty())
+                    <x-empty icon="chart" title="No commission yet" text="Commission appears here when a member in this person's team completes the full fee." />
+                @else
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>Date</th><th>Level</th><th>From member</th><th>Rate</th><th class="text-right">Amount</th></tr></thead>
+                            <tbody>
+                                @foreach ($commissions as $c)
+                                    @php preg_match('/\(([\d.]+)% of \$([\d,.]+)\)/', (string) $c->description, $m); @endphp
+                                    <tr>
+                                        <td class="whitespace-nowrap text-ink-400">{{ $c->created_at->format('d M Y, h:i A') }}</td>
+                                        <td><span class="badge badge-gold">L{{ $c->level }}</span></td>
+                                        <td>
+                                            @if ($c->fromUser)
+                                                <a href="{{ route('admin.members.show', $c->fromUser) }}" class="font-medium text-ink-100 hover:text-gold">{{ $c->fromUser->name }}</a>
+                                                <div class="text-xs text-ink-400">{{ $c->fromUser->username }}</div>
+                                            @else
+                                                <span class="text-ink-400">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-ink-400">{{ $m ? $m[1].'% of $'.$m[2] : '—' }}</td>
+                                        <td class="money text-right text-bull-400">+${{ number_format((float) $c->amount, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if ($commissions->hasPages())
+                        <div class="border-t border-ink-700 px-5 py-4">{{ $commissions->links() }}</div>
+                    @endif
+                @endif
             </div>
 
             <div class="card">

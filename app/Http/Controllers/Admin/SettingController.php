@@ -32,9 +32,9 @@ class SettingController extends Controller
 
         $data['upline_must_be_full'] = $request->boolean('upline_must_be_full');
 
-        $totalCommission = collect(array_keys($this->commissionRules()))->sum(fn ($key) => (float) $data[$key]);
-        if ($totalCommission > $data['full_fee']) {
-            return back()->withInput()->withErrors(['commission_level_1' => 'Total commission of all levels ($'.$totalCommission.') cannot exceed the full fee.']);
+        $totalPercent = collect(array_keys($this->commissionRules()))->sum(fn ($key) => (float) $data[$key]);
+        if ($totalPercent > 100) {
+            return back()->withInput()->withErrors(['commission_level_1' => 'Total commission of all levels ('.$totalPercent.'%) cannot be more than 100%.']);
         }
 
         Setting::setMany($data);
@@ -42,12 +42,12 @@ class SettingController extends Controller
         return back()->with('success', 'Settings saved. New values apply to payments approved from now on.');
     }
 
-    /** One required amount per commission level (commission_level_1 … commission_level_N). */
+    /** One required percentage per commission level (commission_level_1 … commission_level_N). */
     private function commissionRules(): array
     {
         $rules = [];
         foreach (array_keys(Setting::commissionLevels()) as $level) {
-            $rules["commission_level_{$level}"] = ['required', 'numeric', 'min:0'];
+            $rules["commission_level_{$level}"] = ['required', 'numeric', 'min:0', 'max:100'];
         }
 
         return $rules;

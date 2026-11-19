@@ -29,27 +29,40 @@
             <div class="card-header">
                 <h3 class="card-title">Referral commission ({{ $levelCount }} levels)</h3>
             </div>
-            {{-- Live total so the admin sees what one full-fee member pays out across all levels. --}}
-            <div class="card-body space-y-5">
-                <p class="text-sm text-ink-400">Fixed amount paid to each upline when a member in their team completes the full fee. Level 1 is the direct sponsor. Set a level to 0 to switch it off.</p>
+            {{-- Percent inputs with a live dollar preview based on the full fee field above. --}}
+            <div class="card-body space-y-5"
+                 x-data="{
+                     fee: 0, pct: {},
+                     read() {
+                         const form = $el.closest('form');
+                         this.fee = parseFloat(form.querySelector('#full_fee')?.value) || 0;
+                         form.querySelectorAll('[data-level-percent]').forEach(i => this.pct[i.name] = parseFloat(i.value) || 0);
+                     },
+                     total() { return Object.values(this.pct).reduce((a, b) => a + b, 0); },
+                     dollars(p) { return '$' + (this.fee * p / 100).toFixed(2); },
+                 }"
+                 x-init="read(); $el.closest('form').addEventListener('input', () => read())">
+                <p class="text-sm text-ink-400">Each upline earns this <strong class="text-ink-200">percentage of what the member paid</strong> when that member completes the full fee. Level 1 is the direct sponsor. Set a level to 0 to switch it off.</p>
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     @for ($lvl = 1; $lvl <= $levelCount; $lvl++)
+                        @php $field = 'commission_level_'.$lvl; @endphp
                         <div>
-                            <x-input-label :for="'commission_level_'.$lvl" :value="$lvl === 1 ? 'Level 1 (direct)' : 'Level '.$lvl" />
+                            <x-input-label :for="$field" :value="$lvl === 1 ? 'Level 1 (direct)' : 'Level '.$lvl" />
                             <div class="relative">
-                                <span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-ink-400">$</span>
-                                <x-text-input :id="'commission_level_'.$lvl" :name="'commission_level_'.$lvl" type="number" step="0.01" min="0" data-level-amount
-                                              :value="old('commission_level_'.$lvl, $s['commission_level_'.$lvl] ?? 0)" class="money pl-7" required />
+                                <x-text-input :id="$field" :name="$field" type="number" step="0.01" min="0" max="100" data-level-percent
+                                              :value="old($field, $s[$field] ?? 0)" class="money pr-8" required />
+                                <span class="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm text-ink-400">%</span>
                             </div>
-                            <x-input-error :messages="$errors->get('commission_level_'.$lvl)" />
+                            <p class="field-help money" x-text="'= ' + dollars(pct['{{ $field }}'] || 0) + ' on $' + fee.toFixed(0)"></p>
+                            <x-input-error :messages="$errors->get($field)" />
                         </div>
                     @endfor
                 </div>
-                <div x-data="{ sum: 0, total() { let t = 0; $el.closest('form').querySelectorAll('[data-level-amount]').forEach(i => t += parseFloat(i.value) || 0); return t; } }"
-                     x-init="sum = total(); $el.closest('form').addEventListener('input', () => sum = total())"
-                     class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-800/40 px-4 py-3 text-sm">
-                    <span class="text-ink-400">Total paid out per full-fee member</span>
-                    <span class="money font-semibold text-gold" x-text="'$' + sum.toFixed(2)">${{ number_format(array_sum(\App\Models\Setting::commissionLevels()), 2) }}</span>
+                <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3 text-sm"
+                     :class="total() > 100 ? 'border-bear/40 bg-bear/10' : 'border-ink-700 bg-ink-800/40'">
+                    <span class="text-ink-400">All levels together, per full-fee member</span>
+                    <span class="money font-semibold" :class="total() > 100 ? 'text-bear-400' : 'text-gold'"
+                          x-text="total().toFixed(2).replace(/\.00$/, '') + '% = ' + dollars(total())">{{ array_sum(\App\Models\Setting::commissionLevels()) }}%</span>
                 </div>
                 <label class="flex items-start gap-3 text-sm">
                     <input type="checkbox" name="upline_must_be_full" value="1" @checked(old('upline_must_be_full', filter_var($s['upline_must_be_full'], FILTER_VALIDATE_BOOLEAN)))
